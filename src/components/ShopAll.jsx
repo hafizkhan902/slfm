@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useProducts } from '../context/ProductContext';
 import { ProductIcon } from './ProductIcon';
 import { useCart } from '../context/CartContext';
+import { ProductSkeletonGrid } from './ProductSkeleton';
 
 export function ShopAll({
   selectedCategory,
@@ -13,7 +14,7 @@ export function ShopAll({
   onOpenFullCatalog,
   onBackToHome
 }) {
-  const { products, categoriesList, roomsList } = useProducts();
+  const { products, categoriesList, roomsList, isLoading } = useProducts();
   const { addToCart, setIsCartOpen } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('default');
@@ -227,57 +228,61 @@ export function ShopAll({
           </div>
         </div>
 
-        {/* Product Grid */}
-        <div className="product-grid" id="shop-grid">
-          {displayedProducts.map((product) => {
-            const isAdded = addedIds[product.id];
-            return (
-              <div
-                className="product-card shop-item"
-                key={product.id}
-                onClick={() => onSelectProduct(product)}
-              >
-                <div className={`product-thumb ${product.image ? 'has-image' : ''}`} style={{ background: product.image ? '#ffffff' : product.bg }}>
-                  {product.badge && (
-                    <span className={`product-badge ${product.badge.includes('%') || product.badge === 'Sale' ? 'sale' : ''}`}>
-                      {product.badge}
-                    </span>
-                  )}
-                  <ProductIcon type={product.iconType} image={product.image} alt={product.name} />
-                </div>
-                <div className="product-body">
-                  <span className="product-room">{product.categoryName} · {product.roomName}</span>
-                  <p className="product-name">{product.name}</p>
-                  <div className="price-row">
-                    <span className="price-current">৳{product.price.toLocaleString()}</span>
-                    {product.originalPrice && (
-                      <span className="price-original">৳{product.originalPrice.toLocaleString()}</span>
+        {/* Product Grid or Skeleton Grid */}
+        {isLoading && products.length === 0 ? (
+          <ProductSkeletonGrid count={isFullPage ? 8 : 8} />
+        ) : (
+          <div className="product-grid" id="shop-grid">
+            {displayedProducts.map((product) => {
+              const isAdded = addedIds[product.id];
+              return (
+                <div
+                  className="product-card shop-item"
+                  key={product.id}
+                  onClick={() => onSelectProduct(product)}
+                >
+                  <div className={`product-thumb ${product.image ? 'has-image' : ''}`} style={{ background: product.image ? '#ffffff' : product.bg }}>
+                    {product.badge && (
+                      <span className={`product-badge ${product.badge.includes('%') || product.badge === 'Sale' ? 'sale' : ''}`}>
+                        {product.badge}
+                      </span>
                     )}
+                    <ProductIcon type={product.iconType} image={product.image} alt={product.name} />
                   </div>
-                  <div className="product-actions">
-                    <button
-                      type="button"
-                      className={`btn-cart ${isAdded ? 'added' : ''}`}
-                      onClick={(e) => handleAddToCart(e, product)}
-                    >
-                      {isAdded ? 'Added ' : 'Add to cart'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-buy"
-                      onClick={(e) => handleBuyNow(e, product)}
-                    >
-                      Buy now
-                    </button>
+                  <div className="product-body">
+                    <span className="product-room">{product.categoryName} · {product.roomName}</span>
+                    <p className="product-name">{product.name}</p>
+                    <div className="price-row">
+                      <span className="price-current">৳{product.price.toLocaleString()}</span>
+                      {product.originalPrice && (
+                        <span className="price-original">৳{product.originalPrice.toLocaleString()}</span>
+                      )}
+                    </div>
+                    <div className="product-actions">
+                      <button
+                        type="button"
+                        className={`btn-cart ${isAdded ? 'added' : ''}`}
+                        onClick={(e) => handleAddToCart(e, product)}
+                      >
+                        {isAdded ? 'Added ' : 'Add to cart'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-buy"
+                        onClick={(e) => handleBuyNow(e, product)}
+                      >
+                        Buy now
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Home Page 2-Row Preview Gradient Fade Overlay & Circular Down Arrow Expand Button */}
-        {!isFullPage && onOpenFullCatalog && (
+        {!isLoading && !isFullPage && onOpenFullCatalog && filteredProducts.length > PREVIEW_LIMIT && (
           <div className="preview-fade-overlay">
             <button
               type="button"
@@ -295,7 +300,7 @@ export function ShopAll({
           </div>
         )}
 
-        {filteredProducts.length === 0 && (
+        {!isLoading && filteredProducts.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--ink-soft)' }}>
             <p style={{ fontSize: '1.2rem', fontFamily: 'Fraunces, serif' }}>No furniture pieces match your selected filter.</p>
             <button

@@ -16,37 +16,11 @@ export function AuthProvider({ children }) {
 
   // Registered users database
   const [usersDb, setUsersDb] = useState(() => {
-    const defaultUsers = [
-      {
-        id: 'user-demo-1',
-        name: 'Tanvir Hasan',
-        email: 'tanvir@gmail.com',
-        phone: '+8801712345678',
-        address: 'House 42, Road 11, Banani, Trishal, Mymensingh',
-        password: 'password123',
-        role: 'USER'
-      },
-      {
-        id: 'admin-demo-1',
-        name: 'Admin Master (ShahLajuk)',
-        email: 'admin@shahlajuk.com',
-        phone: '+8801700000000',
-        address: 'ShahLajuk HQ, Gulshan-2, Trishal, Mymensingh',
-        password: 'adminpassword',
-        role: 'ADMIN'
-      }
-    ];
     try {
       const stored = localStorage.getItem('shahlajuk_users_db');
-      if (!stored) return defaultUsers;
-      const parsed = JSON.parse(stored);
-      const hasAdmin = parsed.some((u) => u.email === 'admin@shahlajuk.com');
-      if (!hasAdmin) {
-        parsed.push(defaultUsers[1]);
-      }
-      return parsed;
+      return stored ? JSON.parse(stored) : [];
     } catch {
-      return defaultUsers;
+      return [];
     }
   });
 
@@ -286,12 +260,10 @@ export function AuthProvider({ children }) {
   };
 
   const updateUserStatus = async (userId, newStatus) => {
-    console.info(' [Admin Debug] Step 1: Initiating user status update', { userId, newStatus });
     try {
-      const res = await api.updateUserStatus(userId, newStatus);
-      console.log(' [Admin Debug] Step 2: User status updated in MongoDB:', res);
-    } catch (err) {
-      console.warn('️ [Admin Debug] updateUserStatus API fallback:', err.message);
+      await api.updateUserStatus(userId, newStatus);
+    } catch {
+      // Fallback to local state if server unreachable
     }
     setUsersDb((prev) =>
       prev.map((u) =>
@@ -323,15 +295,12 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    console.info(' [Auth Debug] User logged out, clearing JWT token.');
     localStorage.removeItem('shahlajuk_token');
     setCurrentUser(null);
     setIsProfileModalOpen(false);
   };
 
   const createOrder = async (orderDetails) => {
-    console.info(' [Checkout Debug] Step 1: Submitting new purchase order to server backend...', orderDetails);
-
     const payload = {
       customerName: orderDetails.name,
       phone: orderDetails.phone,
@@ -361,7 +330,6 @@ export function AuthProvider({ children }) {
         totalAmount: o.totalAmount
       };
 
-      console.log(' [Checkout Debug] Step 2: Order created with server-generated orderNumber:', serverOrderNumber);
       setOrdersDb((prev) => [createdOrderObj, ...prev]);
       return serverOrderNumber;
     }
@@ -399,12 +367,10 @@ export function AuthProvider({ children }) {
   const trackOrderById = async (orderId, phone) => {
     const cleanId = orderId.trim().toUpperCase();
     const cleanPhone = phone.trim();
-    console.info(' [Tracker Debug] Searching for order:', { cleanId, cleanPhone });
 
     try {
       const serverOrder = await api.trackOrder(cleanId, cleanPhone);
       if (serverOrder) {
-        console.log(' [Tracker Debug] Order found in MongoDB database:', serverOrder);
         return {
           id: serverOrder.orderNumber || serverOrder._id,
           customerName: serverOrder.customerName,
@@ -417,8 +383,8 @@ export function AuthProvider({ children }) {
           totalAmount: serverOrder.totalAmount
         };
       }
-    } catch (err) {
-      console.warn('️ [Tracker Debug] Server track lookup fallback:', err.message);
+    } catch {
+      // Fallback lookup from state
     }
 
     return ordersDb.find(
@@ -432,15 +398,10 @@ export function AuthProvider({ children }) {
     const cleanId = String(orderId).trim();
     const digitsOnly = cleanId.replace(/[^0-9]/g, '');
 
-    console.info(` [Admin Debug] Step 1: Initiating Realtime Order Status Update for "${cleanId}" -> "${newStatus}"`);
-
-    // 1. Dispatch PATCH request to MongoDB server API endpoint
-    console.log(' [Admin Debug] Step 2: Dispatching PATCH HTTP request to MongoDB server endpoint...', `/orders/admin/${orderId}/status`, { newStatus });
     const updated = await api.updateOrderStatus(orderId, newStatus);
 
     if (updated && (updated.orderNumber || updated._id)) {
       const serverStatus = updated.status || newStatus;
-      console.log(' [Admin Debug] Step 3: Server confirmed MongoDB status update in real time:', { orderNumber: updated.orderNumber || updated._id, status: serverStatus });
 
       setOrdersDb((prev) =>
         prev.map((o) => {

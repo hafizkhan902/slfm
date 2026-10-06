@@ -7,7 +7,7 @@ export function ProductIcon({ type, image, alt }) {
         src={image}
         alt={alt || 'Furniture product'}
         className="product-cloudinary-img"
-        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }}
+        style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px' }}
       />
     );
   }

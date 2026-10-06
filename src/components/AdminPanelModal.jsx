@@ -452,9 +452,7 @@ export function AdminPanelModal() {
 
   const handleSaveProduct = async (e) => {
     e.preventDefault();
-    console.info('[AdminPanelModal] Step 1: Submitting product form. Editing ID:', editingProductId || 'NEW_PRODUCT');
     if (!productFormData.name || !productFormData.price || !productFormData.description) {
-      console.warn('[AdminPanelModal] Validation failed: Missing required product fields.');
       alert('Please fill in product name, price, and description.');
       return;
     }
@@ -481,14 +479,11 @@ export function AdminPanelModal() {
         finish: productFormData.finish
       }
     };
-    console.info('[AdminPanelModal] Step 2: Product form payload prepared:', payload);
 
     try {
       if (editingProductId) {
-        console.info('[AdminPanelModal] Step 3: Dispatching updateProduct to context...');
         await updateProduct(editingProductId, payload);
       } else {
-        console.info('[AdminPanelModal] Step 3: Dispatching addProduct to context...');
         await addProduct(payload);
       }
       setIsProductFormOpen(false);
@@ -499,15 +494,12 @@ export function AdminPanelModal() {
 
   const handleSavePromo = async (e) => {
     e.preventDefault();
-    console.info('[AdminPanelModal] Step 1: Submitting promo poster form for:', promoFormData.title);
     if (!promoFormData.title || !promoFormData.subtitle) {
-      console.warn('[AdminPanelModal] Validation failed: Missing title or subtitle.');
       alert('Please fill in promo banner title and subtitle.');
       return;
     }
 
     try {
-      console.info('[AdminPanelModal] Step 2: Dispatching addPromo to context...');
       await addPromo(promoFormData);
       setIsPromoFormOpen(false);
     } catch (err) {

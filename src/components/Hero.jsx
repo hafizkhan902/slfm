@@ -5,8 +5,11 @@ export function Hero() {
     <header className="hero" id="top">
       <div className="wrap">
         <div className="hero-text-block">
-          <div className="hero-location-badge">
-            <span className="dot-active"></span> TRISHAL, MYMENSINGH SHOWROOM
+          <div className="hero-brand-header">
+            <span className="brand-accent-bar"></span>
+            <span className="brand-name-text">
+              SHAH LAJUK <span className="brand-suffix">FURNITURE MART</span>
+            </span>
           </div>
 
           <h1 className="hero-headline">

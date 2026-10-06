@@ -209,24 +209,6 @@ export function AuthModal() {
     }
   };
 
-  const fillDemoUser = () => {
-    setAuthModalTab('login');
-    setFormData((prev) => ({
-      ...prev,
-      emailOrPhone: 'tanvir@gmail.com',
-      password: 'password123'
-    }));
-  };
-
-  const fillDemoAdmin = () => {
-    setAuthModalTab('login');
-    setFormData((prev) => ({
-      ...prev,
-      emailOrPhone: 'admin@shahlajuk.com',
-      password: 'adminpassword'
-    }));
-  };
-
   return (
     <div className="modal-backdrop open" onClick={handleClose}>
       <div className="auth-modal-wrapper" onClick={(e) => e.stopPropagation()}>
@@ -387,29 +369,6 @@ export function AuthModal() {
                     <polyline points="12 5 19 12 12 19"></polyline>
                   </svg>
                 </button>
-
-                <div className="auth-demo-divider">
-                  <span>Fast Demo Access</span>
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn-demo-pill"
-                    onClick={fillDemoUser}
-                    style={{ flex: '1 1 calc(50% - 4px)', padding: '8px 10px', fontSize: '0.8rem' }}
-                  >
-                    <span className="demo-spark"></span> User Demo
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-demo-pill"
-                    onClick={fillDemoAdmin}
-                    style={{ flex: '1 1 calc(50% - 4px)', padding: '8px 10px', fontSize: '0.8rem', borderColor: 'var(--walnut)', color: 'var(--walnut)', fontWeight: 600 }}
-                  >
-                    <span className="demo-spark"></span> Admin Demo
-                  </button>
-                </div>
               </form>
             ) : (
               <form className="auth-form" onSubmit={handleRegisterSubmit}>

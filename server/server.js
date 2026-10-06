@@ -31,27 +31,13 @@ connectDB().then(() => {
 
 const app = express();
 
-// 1. Security Headers (Helmet) & HTTP Request Debugging Middleware
+// 1. Security Headers (Helmet)
 app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
   })
 );
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const reqId = Math.random().toString(36).substring(2, 8);
-  console.log(`🛡️ [Helmet Debug] [${new Date().toLocaleTimeString()}] [Req #${reqId}] ${req.method} ${req.originalUrl} | IP: ${req.ip || '127.0.0.1'}`);
-
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    const icon = res.statusCode >= 400 ? '⚠️' : '✅';
-    console.log(`${icon} [Helmet Debug] [Req #${reqId}] ${req.method} ${req.originalUrl} -> Status ${res.statusCode} (${duration}ms)`);
-  });
-
-  next();
-});
 
 app.use(compression());
 
