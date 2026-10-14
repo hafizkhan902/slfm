@@ -52,9 +52,9 @@ export function ShopByCategory({ onSelectProduct }) {
           ))}
         </div>
 
-        {isLoading && products.length === 0 ? (
+        {isLoading ? (
           <ProductSkeletonGrid count={4} />
-        ) : (
+        ) : filteredItems.length > 0 ? (
           <div className="product-grid">
             {filteredItems.map((product) => {
               const isAdded = addedIds[product.id];
@@ -101,6 +101,10 @@ export function ShopByCategory({ onSelectProduct }) {
                 </div>
               );
             })}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ink-soft)' }}>
+            <p>No products available in this category.</p>
           </div>
         )}
       </div>

@@ -14,7 +14,7 @@ export function ShopAll({
   onOpenFullCatalog,
   onBackToHome
 }) {
-  const { products, categoriesList, roomsList, isLoading } = useProducts();
+  const { products, categoriesList, roomsList, isLoading, loadError, refetchCatalog } = useProducts();
   const { addToCart, setIsCartOpen } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('default');
@@ -218,19 +218,50 @@ export function ShopAll({
           </div>
 
           {/* Active Filter Context Indicator Bar */}
-          <div className="active-filter-summary">
-            <span>
-              Showing <strong>{displayedProducts.length}</strong> of <strong>{filteredProducts.length}</strong> items
-              {selectedCategory !== 'all' && <> in <em>{activeCategoryObj?.name}</em></>}
-              {selectedRoom !== 'all' && <> for <em>{activeRoomObj?.name}</em></>}
-              {!isFullPage && filteredProducts.length > PREVIEW_LIMIT && <> (2-row preview)</>}
-            </span>
-          </div>
+          {!isLoading && products.length > 0 && (
+            <div className="active-filter-summary">
+              <span>
+                Showing <strong>{displayedProducts.length}</strong> of <strong>{filteredProducts.length}</strong> items
+                {selectedCategory !== 'all' && <> in <em>{activeCategoryObj?.name}</em></>}
+                {selectedRoom !== 'all' && <> for <em>{activeRoomObj?.name}</em></>}
+                {!isFullPage && filteredProducts.length > PREVIEW_LIMIT && <> (2-row preview)</>}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Product Grid or Skeleton Grid */}
-        {isLoading && products.length === 0 ? (
+        {isLoading ? (
           <ProductSkeletonGrid count={isFullPage ? 8 : 8} />
+        ) : products.length === 0 ? (
+          <div className="catalog-empty-state">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" strokeWidth="1.5" style={{ margin: '0 auto 12px', opacity: 0.6 }}>
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+              <path d="M6 6h10M6 10h10" />
+            </svg>
+            <h3 style={{ fontSize: '1.25rem', fontFamily: 'Fraunces, serif', marginBottom: '8px' }}>
+              {loadError ? 'Catalogue Server Connecting...' : 'Catalog Currently Empty'}
+            </h3>
+            <p style={{ color: 'var(--ink-soft)', maxWidth: '440px', margin: '0 auto 16px', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              {loadError
+                ? 'Our showroom catalog server is currently waking up or reconnecting. Please click below to refresh.'
+                : 'There are currently no products available in the catalog.'}
+            </p>
+            {refetchCatalog && (
+              <button
+                type="button"
+                className="btn btn-hero-primary"
+                onClick={refetchCatalog}
+                style={{ padding: '8px 22px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M23 4v6h-6"></path>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Retry Connection
+              </button>
+            )}
+          </div>
         ) : (
           <div className="product-grid" id="shop-grid">
             {displayedProducts.map((product) => {

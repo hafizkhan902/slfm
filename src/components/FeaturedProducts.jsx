@@ -36,9 +36,9 @@ export function FeaturedProducts({ onSelectProduct }) {
           </div>
         </div>
 
-        {isLoading && products.length === 0 ? (
+        {isLoading ? (
           <ProductSkeletonGrid count={4} />
-        ) : (
+        ) : featuredList.length > 0 ? (
           <div className="product-grid">
             {featuredList.map((product) => {
               const isAdded = addedIds[product.id];
@@ -86,7 +86,7 @@ export function FeaturedProducts({ onSelectProduct }) {
               );
             })}
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   );

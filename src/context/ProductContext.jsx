@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { products as initialProducts, categoriesList, roomsList } from '../data/products';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { categoriesList, roomsList } from '../data/products';
 import { api } from '../services/api';
 
 const DEFAULT_PROMO_BANNERS = [
@@ -29,20 +29,45 @@ const DEFAULT_PROMO_BANNERS = [
   }
 ];
 
+// Known legacy dummy IDs to explicitly filter out
+const DUMMY_IDS = new Set([
+  'noyon-dining-table',
+  'ronno-study-table',
+  'adri-dining-chair',
+  'shanta-bed-king',
+  'kotha-dressing-table',
+  'boighor-bookshelf',
+  'alpona-2door-wardrobe',
+  'choya-3seater-sofa',
+  'deko-wall-shelf'
+]);
+
 const ProductContext = createContext();
 
 export function ProductProvider({ children }) {
   // 1. Dynamic Products State & Loading Status
+  // Purge legacy dummy items from localStorage immediately
   const [productsList, setProductsList] = useState(() => {
     try {
       const stored = localStorage.getItem('shahlajuk_products');
-      return stored ? JSON.parse(stored) : initialProducts;
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const verified = parsed.filter(p => Boolean(p.mongoId) && !DUMMY_IDS.has(p.id));
+          if (verified.length > 0) {
+            return verified;
+          }
+        }
+      }
+      localStorage.removeItem('shahlajuk_products');
+      return [];
     } catch {
-      return initialProducts;
+      return [];
     }
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   // 2. Dynamic Promotional Banners State
   const [promosList, setPromosList] = useState(() => {
@@ -58,56 +83,77 @@ export function ProductProvider({ children }) {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
   // Sync products and promos with MongoDB Database on mount
-  useEffect(() => {
-    let isMounted = true;
+  const fetchCatalogFromDB = useCallback(() => {
+    let isCancelled = false;
+    let pollTimeout = null;
+    let attempts = 0;
+    const maxAttempts = 25; // Keep polling up to ~75s for Render server spin-up
 
-    const fetchCatalogFromDB = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+
+    const pollProducts = async () => {
       try {
         const prodRes = await api.getProducts();
-        if (isMounted && prodRes && Array.isArray(prodRes.products)) {
-          if (prodRes.products.length > 0) {
-            const formattedProds = prodRes.products.map(p => ({
-              id: p.productId || p._id || p.id,
-              mongoId: p._id,
-              name: p.name,
-              category: p.category,
-              categoryName: categoriesList.find(c => c.id === p.category)?.name || p.category,
-              room: p.room,
-              roomName: roomsList.find(r => r.id === p.room)?.name || p.room,
-              price: p.price,
-              originalPrice: p.originalPrice || null,
-              badge: p.badge || null,
-              bg: p.bg || 'var(--surface)',
-              iconType: p.iconType || 'table',
-              image: p.image || '',
-              image2: p.image2 || '',
-              image3: p.image3 || '',
-              image4: p.image4 || '',
-              images: Array.isArray(p.images) && p.images.length > 0
-                ? p.images
-                : [p.image, p.image2, p.image3, p.image4].filter(Boolean),
-              description: p.description,
-              specs: p.specs || {
-                dimensions: '3ft x 2ft x 2.5ft',
-                material: 'Melamine-faced board',
-                warranty: '2 Years Warranty',
-                finish: 'Natural Woodgrain Finish'
-              }
-            }));
-            setProductsList(formattedProds);
-          }
+        if (isCancelled) return;
+
+        if (prodRes && Array.isArray(prodRes.products)) {
+          const formattedProds = prodRes.products.map(p => ({
+            id: p.productId || p._id || p.id,
+            mongoId: p._id,
+            name: p.name,
+            category: p.category,
+            categoryName: categoriesList.find(c => c.id === p.category)?.name || p.category,
+            room: p.room,
+            roomName: roomsList.find(r => r.id === p.room)?.name || p.room,
+            price: p.price,
+            originalPrice: p.originalPrice || null,
+            badge: p.badge || null,
+            bg: p.bg || 'var(--surface)',
+            iconType: p.iconType || 'table',
+            image: p.image || '',
+            image2: p.image2 || '',
+            image3: p.image3 || '',
+            image4: p.image4 || '',
+            images: Array.isArray(p.images) && p.images.length > 0
+              ? p.images
+              : [p.image, p.image2, p.image3, p.image4].filter(Boolean),
+            description: p.description,
+            specs: p.specs || {
+              dimensions: '3ft x 2ft x 2.5ft',
+              material: 'Melamine-faced board',
+              warranty: '2 Years Warranty',
+              finish: 'Natural Woodgrain Finish'
+            }
+          }));
+
+          // When response is ready, auto-update products and turn off loading
+          setProductsList(formattedProds);
+          setIsLoading(false);
+          setLoadError(null);
+          return;
         }
       } catch (err) {
-        console.warn('[ProductContext] Backend products fetch fallback:', err.message);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isCancelled) return;
+        // Server might be waking up, continue background polling
       }
 
-      try {
-        const promoRes = await api.getPromos();
-        if (isMounted && promoRes && Array.isArray(promoRes.promos) && promoRes.promos.length > 0) {
+      attempts++;
+      if (!isCancelled && attempts < maxAttempts) {
+        // Poll every 3 seconds while server boots up
+        pollTimeout = setTimeout(pollProducts, 3000);
+      } else if (!isCancelled) {
+        setIsLoading(false);
+        setLoadError('Server response took too long');
+      }
+    };
+
+    pollProducts();
+
+    // Fetch dynamic promos
+    api.getPromos()
+      .then(promoRes => {
+        if (!isCancelled && promoRes && Array.isArray(promoRes.promos) && promoRes.promos.length > 0) {
           const formattedPromos = promoRes.promos.map(p => ({
             id: p.promoId || p._id || p.id,
             mongoId: p._id,
@@ -123,22 +169,29 @@ export function ProductProvider({ children }) {
           }));
           setPromosList(formattedPromos);
         }
-      } catch (err) {
-        console.warn('[ProductContext] Backend promos fetch fallback:', err.message);
-      }
-    };
-
-    fetchCatalogFromDB();
+      })
+      .catch(() => {});
 
     return () => {
-      isMounted = false;
+      isCancelled = true;
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, []);
 
-  // Sync to localStorage
+  useEffect(() => {
+    const cleanup = fetchCatalogFromDB();
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+    };
+  }, [fetchCatalogFromDB]);
+
+  // Sync to localStorage (only save real products)
   useEffect(() => {
     try {
-      localStorage.setItem('shahlajuk_products', JSON.stringify(productsList));
+      if (Array.isArray(productsList) && productsList.length > 0) {
+        const valid = productsList.filter(p => Boolean(p.mongoId) && !DUMMY_IDS.has(p.id));
+        localStorage.setItem('shahlajuk_products', JSON.stringify(valid));
+      }
     } catch (err) {
       console.error('Failed to save products to localStorage', err);
     }
@@ -237,10 +290,9 @@ export function ProductProvider({ children }) {
   };
 
   const resetProductsToDefault = () => {
-    setProductsList(initialProducts);
-    setPromosList(DEFAULT_PROMO_BANNERS);
+    setProductsList([]);
     localStorage.removeItem('shahlajuk_products');
-    localStorage.removeItem('shahlajuk_promos');
+    fetchCatalogFromDB(false);
   };
 
   // Promo Banner CRUD Methods
@@ -282,6 +334,8 @@ export function ProductProvider({ children }) {
         products: productsList,
         promos: promosList,
         isLoading,
+        loadError,
+        refetchCatalog: () => fetchCatalogFromDB(false),
         categoriesList,
         roomsList,
         isAdminPanelOpen,

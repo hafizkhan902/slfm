@@ -21,3 +21,6 @@ yarn-error.log*
 
 #server:
 /server/
+server
+/server
+server/

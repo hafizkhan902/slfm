@@ -7,10 +7,10 @@ export function ProductSkeletonCard() {
       <div className="product-body">
         <div className="skeleton-line skeleton-room shimmer"></div>
         <div className="skeleton-line skeleton-name shimmer"></div>
-        <div className="price-row" style={{ marginTop: '4px' }}>
+        <div className="price-row" style={{ marginTop: '8px' }}>
           <div className="skeleton-line skeleton-price shimmer"></div>
         </div>
-        <div className="product-actions" style={{ marginTop: '8px' }}>
+        <div className="product-actions" style={{ marginTop: '12px' }}>
           <div className="skeleton-btn shimmer"></div>
           <div className="skeleton-btn shimmer"></div>
         </div>

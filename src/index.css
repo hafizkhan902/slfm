@@ -1238,7 +1238,7 @@ section {
   margin-top: 6px;
 }
 
-/* Product Skeleton Loader */
+/* Product Skeleton Loader - Faded Flashing Effect */
 @keyframes skeleton-shimmer {
   0% {
     background-position: -200% 0;
@@ -1248,35 +1248,76 @@ section {
   }
 }
 
+@keyframes skeleton-pulse-fade {
+  0% {
+    opacity: 0.38;
+  }
+  50% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 0.38;
+  }
+}
+
+@keyframes fadeInSoft {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .shimmer {
   background: linear-gradient(
     90deg,
-    var(--surface) 0%,
-    var(--paper) 50%,
-    var(--surface) 100%
+    rgba(228, 221, 208, 0.45) 0%,
+    rgba(248, 245, 239, 0.85) 50%,
+    rgba(228, 221, 208, 0.45) 100%
   ) !important;
   background-size: 200% 100% !important;
-  animation: skeleton-shimmer 1.5s infinite ease-in-out !important;
+  animation: skeleton-shimmer 1.8s infinite ease-in-out !important;
+}
+
+.skeleton-wrapper {
+  width: 100%;
+}
+
+.catalog-empty-state {
+  text-align: center;
+  padding: 56px 24px;
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  margin: 20px 0;
+  animation: fadeInSoft 0.4s ease;
 }
 
 .product-card.skeleton-card {
   pointer-events: none;
   cursor: default;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(211, 201, 184, 0.6);
   background: var(--bg);
+  border-radius: 6px;
+  overflow: hidden;
+  animation: skeleton-pulse-fade 1.6s ease-in-out infinite;
 }
 
 .product-card.skeleton-card:hover {
   transform: none;
-  border-color: var(--line);
+  border-color: rgba(211, 201, 184, 0.6);
   box-shadow: none;
 }
 
 .product-thumb.skeleton-thumb {
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  background: rgba(228, 221, 208, 0.5);
 }
 
 .skeleton-line {
@@ -1284,26 +1325,42 @@ section {
 }
 
 .skeleton-line.skeleton-room {
-  width: 45%;
+  width: 40%;
   height: 12px;
 }
 
 .skeleton-line.skeleton-name {
-  width: 85%;
+  width: 80%;
   height: 18px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .skeleton-line.skeleton-price {
-  width: 55%;
+  width: 50%;
   height: 18px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .skeleton-btn {
   flex: 1;
   height: 42px;
   border-radius: 3px;
+}
+
+/* Smooth automatic fade-in when real products appear */
+.product-card:not(.skeleton-card) {
+  animation: fadeInProduct 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInProduct {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 
