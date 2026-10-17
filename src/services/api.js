@@ -152,5 +152,57 @@ export const api = {
       body: JSON.stringify(sessionData)
     }),
 
-  getVisitorLogs: () => request('/admin/visitors')
+  getVisitorLogs: () => request('/admin/visitors'),
+
+  // Bangladesh BD-GeoAPI & Delivery Area Management
+  getGeoDivisions: () => request('/delivery/geo/divisions'),
+  getGeoDistricts: (divisionId) =>
+    request(`/delivery/geo/districts?division=${encodeURIComponent(divisionId)}`),
+  getGeoUpazilas: (districtId) =>
+    request(`/delivery/geo/upazilas?district=${encodeURIComponent(districtId)}`),
+  searchGeo: (query) =>
+    request(`/delivery/geo/search?q=${encodeURIComponent(query)}`),
+
+  // Customer Checkout Delivery Areas
+  getActiveDeliveryAreas: () => request('/delivery/areas/active'),
+  getActiveDeliveryHierarchy: () => request('/delivery/areas/hierarchy'),
+  validateDeliveryUpazila: (upazilaId) => request(`/delivery/validate/${upazilaId}`),
+
+  // Admin Delivery Areas Management
+  getAdminDeliveryAreas: (queryString = '') =>
+    request(`/delivery/admin/areas${queryString ? `?${queryString}` : ''}`),
+  createDeliveryAreas: (data) =>
+    request('/delivery/admin/areas', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+  updateDeliveryArea: (id, data) =>
+    request(`/delivery/admin/areas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+  toggleDeliveryAreaStatus: (id, isActive) =>
+    request(`/delivery/admin/areas/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive })
+    }),
+  bulkUpdateDeliveryFee: (ids, deliveryFee) =>
+    request('/delivery/admin/areas/bulk-fee', {
+      method: 'PATCH',
+      body: JSON.stringify({ ids, deliveryFee })
+    }),
+  bulkUpdateDeliveryStatus: (ids, isActive) =>
+    request('/delivery/admin/areas/bulk-status', {
+      method: 'PATCH',
+      body: JSON.stringify({ ids, isActive })
+    }),
+  deleteDeliveryArea: (id) =>
+    request(`/delivery/admin/areas/${id}`, {
+      method: 'DELETE'
+    }),
+  bulkDeleteDeliveryAreas: (ids) =>
+    request('/delivery/admin/areas/bulk-delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids })
+    })
 };

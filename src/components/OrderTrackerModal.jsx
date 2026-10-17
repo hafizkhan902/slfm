@@ -97,8 +97,11 @@ function OrderCard({ order, defaultExpanded = false }) {
           {/* Delivery & Payment details */}
           <div className="order-card-foot" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div className="order-delivery-info">
-              <span> <strong>Delivery Address:</strong> {order.address}</span>
-              <span> <strong>Payment:</strong> {order.paymentMethod} {order.trxId ? `(TrxID: ${order.trxId})` : ''}</span>
+              {order.deliveryLocation?.upazilaName && (
+                <span>📍 <strong>Delivery Area:</strong> {order.deliveryLocation.upazilaName}, {order.deliveryLocation.districtName}, {order.deliveryLocation.divisionName} (৳{order.shippingFee || order.deliveryLocation.deliveryFee} shipping)</span>
+              )}
+              <span>🏠 <strong>Delivery Address:</strong> {order.address}</span>
+              <span>💳 <strong>Payment:</strong> {order.paymentMethod} {order.trxId ? `(TrxID: ${order.trxId})` : ''}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px dashed #E0D6C8' }}>
               <button

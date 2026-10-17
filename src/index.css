@@ -317,6 +317,86 @@ select:focus-visible {
   font-weight: 600;
 }
 
+/* ---------- Mobile Independent Floating Cart Button ---------- */
+.mobile-floating-cart-btn {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #3A2214 0%, #231D18 100%);
+  color: #F8F5EF;
+  border: 1.5px solid rgba(201, 168, 118, 0.55);
+  box-shadow: 0 8px 24px rgba(35, 29, 24, 0.35), 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  z-index: 850;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-floating-cart-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 12px 30px rgba(35, 29, 24, 0.42), 0 0 14px rgba(201, 168, 118, 0.35);
+  border-color: var(--oak);
+}
+
+.mobile-floating-cart-btn:active {
+  transform: scale(0.92);
+}
+
+.mobile-floating-cart-btn.drawer-open {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+}
+
+.floating-cart-icon-inner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.floating-cart-count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: linear-gradient(135deg, #B91C1C 0%, #E05A47 100%);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  border: 2px solid var(--paper);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  animation: badgePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes badgePop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .mobile-hamburger-btn {
   display: none;
   background: var(--paper);
@@ -3124,6 +3204,12 @@ footer {
   .mobile-menu-drawer {
     display: block;
   }
+  .mobile-floating-cart-btn {
+    display: flex !important;
+  }
+  .toast {
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
 
   /* Mobile Ergonomic Filter behavior */
   .mobile-filter-toggle {
@@ -3244,7 +3330,7 @@ footer {
   .toast {
     left: 12px;
     right: 12px;
-    bottom: 12px;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
     font-size: 0.8rem;
   }
 }

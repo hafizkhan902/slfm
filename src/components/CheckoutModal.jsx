@@ -21,6 +21,16 @@ export function CheckoutModal() {
     nagadNumber: '01812-345678'
   });
 
+  // Delivery Area Cascading State
+  const [deliveryDivisions, setDeliveryDivisions] = useState([]);
+  const [isLoadingGeo, setIsLoadingGeo] = useState(false);
+  const [geoError, setGeoError] = useState('');
+  const [selectedDivisionId, setSelectedDivisionId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedUpazilaId, setSelectedUpazilaId] = useState('');
+  const [selectedAreaDetails, setSelectedAreaDetails] = useState(null);
+  const [deliveryFee, setDeliveryFee] = useState(0);
+
   const [placedOrderId, setPlacedOrderId] = useState('');
   const [orderConfirmed, setOrderConfirmed] = useState(false);
 
@@ -34,6 +44,7 @@ export function CheckoutModal() {
     }
   }, [isCheckoutOpen, currentUser]);
 
+  // Fetch MFS settings & active delivery areas hierarchy
   useEffect(() => {
     if (!isCheckoutOpen) return;
 
@@ -51,7 +62,26 @@ export function CheckoutModal() {
       }
     };
 
+    const fetchDeliveryHierarchy = async () => {
+      setIsLoadingGeo(true);
+      setGeoError('');
+      try {
+        const res = await api.getActiveDeliveryHierarchy();
+        if (res && Array.isArray(res.divisions)) {
+          setDeliveryDivisions(res.divisions);
+        } else {
+          setDeliveryDivisions([]);
+        }
+      } catch (err) {
+        console.warn('[CheckoutModal] Failed to fetch active delivery areas:', err.message);
+        setGeoError('Could not load delivery locations. Please verify connection.');
+      } finally {
+        setIsLoadingGeo(false);
+      }
+    };
+
     fetchMfsSettings();
+    fetchDeliveryHierarchy();
   }, [isCheckoutOpen]);
 
   useEffect(() => {
@@ -66,6 +96,54 @@ export function CheckoutModal() {
   }, [currentUser, isCheckoutOpen]);
 
   if (!isCheckoutOpen || !currentUser) return null;
+
+  // Active cascading options
+  const currentDivision = deliveryDivisions.find(
+    (d) => String(d.id) === String(selectedDivisionId)
+  );
+  const availableDistricts = currentDivision ? currentDivision.districts || [] : [];
+
+  const currentDistrict = availableDistricts.find(
+    (d) => String(d.id) === String(selectedDistrictId)
+  );
+  const availableUpazilas = currentDistrict ? currentDistrict.upazilas || [] : [];
+
+  const handleDivisionChange = (e) => {
+    const val = e.target.value;
+    setSelectedDivisionId(val);
+    setSelectedDistrictId('');
+    setSelectedUpazilaId('');
+    setSelectedAreaDetails(null);
+    setDeliveryFee(0);
+  };
+
+  const handleDistrictChange = (e) => {
+    const val = e.target.value;
+    setSelectedDistrictId(val);
+    setSelectedUpazilaId('');
+    setSelectedAreaDetails(null);
+    setDeliveryFee(0);
+  };
+
+  const handleUpazilaChange = (e) => {
+    const val = e.target.value;
+    setSelectedUpazilaId(val);
+    if (!val) {
+      setSelectedAreaDetails(null);
+      setDeliveryFee(0);
+      return;
+    }
+    const upz = availableUpazilas.find((u) => String(u.id) === String(val));
+    if (upz) {
+      setSelectedAreaDetails(upz);
+      setDeliveryFee(Number(upz.deliveryFee || 0));
+    } else {
+      setSelectedAreaDetails(null);
+      setDeliveryFee(0);
+    }
+  };
+
+  const grandTotal = subtotal + (selectedAreaDetails ? Number(deliveryFee) : 0);
 
   const isbKash = formData.paymentMethod.toLowerCase().includes('bkash');
   const isNagad = formData.paymentMethod.toLowerCase().includes('nagad');
@@ -95,8 +173,16 @@ export function CheckoutModal() {
       return;
     }
 
+    // Geographic area requirement if delivery areas are configured
+    if (deliveryDivisions.length > 0) {
+      if (!selectedDivisionId || !selectedDistrictId || !selectedUpazilaId || !selectedAreaDetails) {
+        showToast('Please select your Division, District, and Upazila for delivery.');
+        return;
+      }
+    }
+
     if (!formData.address.trim()) {
-      showToast('Please enter your delivery address.');
+      showToast('Please enter your detailed street address.');
       return;
     }
 
@@ -106,14 +192,30 @@ export function CheckoutModal() {
     }
 
     try {
+      const fullAddressString = selectedAreaDetails
+        ? `${formData.address.trim()}, ${selectedAreaDetails.name}, ${currentDistrict?.name}, ${currentDivision?.name}`
+        : formData.address.trim();
+
       const orderId = await createOrder({
         name: formData.name.trim(),
         phone: phoneVal.cleanPhone,
-        address: formData.address.trim(),
+        address: fullAddressString,
+        deliveryLocation: selectedAreaDetails
+          ? {
+              divisionId: Number(currentDivision?.id),
+              divisionName: currentDivision?.name,
+              districtId: Number(currentDistrict?.id),
+              districtName: currentDistrict?.name,
+              upazilaId: Number(selectedAreaDetails.id),
+              upazilaName: selectedAreaDetails.name,
+              deliveryFee: Number(selectedAreaDetails.deliveryFee)
+            }
+          : null,
+        shippingFee: selectedAreaDetails ? Number(selectedAreaDetails.deliveryFee) : 0,
         paymentMethod: formData.paymentMethod,
         trxId: isMobileBanking ? formData.trxId.trim().toUpperCase() : '',
         items: cartItems,
-        totalAmount: subtotal
+        totalAmount: grandTotal
       });
 
       setPlacedOrderId(orderId);
@@ -214,23 +316,36 @@ export function CheckoutModal() {
                 Complete your order details below for ShahLajuk Furniture Mart.
               </p>
 
+              {/* Order Summary & Pricing Calculation */}
               <div
                 style={{
                   margin: '16px 0',
-                  padding: '12px 16px',
+                  padding: '14px 16px',
                   background: 'var(--bg)',
                   border: '1px solid var(--line)',
                   borderRadius: '6px'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                  <span>Order Items:</span>
-                  <span>{cartItems.reduce((sum, item) => sum + item.quantity, 0)} items</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                  <span style={{ color: 'var(--ink-soft)' }}>Order Items ({cartItems.reduce((sum, item) => sum + item.quantity, 0)}):</span>
+                  <span style={{ fontWeight: 600 }}>৳{subtotal.toLocaleString()}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                  <span>Total Amount:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--walnut)' }}>
-                    ৳{subtotal.toLocaleString()}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.9rem' }}>
+                  <span style={{ color: 'var(--ink-soft)' }}>
+                    Delivery Fee {selectedAreaDetails ? `(${selectedAreaDetails.name})` : ''}:
+                  </span>
+                  <span style={{ fontWeight: 600, color: selectedAreaDetails ? 'var(--walnut)' : 'var(--ink-soft)' }}>
+                    {selectedAreaDetails ? `৳${deliveryFee.toLocaleString()}` : 'Select area below'}
+                  </span>
+                </div>
+
+                <div style={{ height: '1px', background: 'var(--line)', margin: '10px 0' }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}>Total Amount:</span>
+                  <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--walnut)' }}>
+                    ৳{grandTotal.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -278,8 +393,146 @@ export function CheckoutModal() {
                   </span>
                 </div>
 
+                {/* Cascading Location Hierarchy (BD-GeoAPI + Admin Configured Areas) */}
+                <div style={{ marginTop: '10px', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
+                    Delivery Area (Bangladesh) *
+                  </label>
+
+                  {isLoadingGeo ? (
+                    <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '6px', fontSize: '0.88rem', color: 'var(--ink-soft)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="spinner" style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid var(--walnut)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+                      Loading available delivery areas...
+                    </div>
+                  ) : geoError ? (
+                    <div style={{ padding: '10px 12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '6px', color: '#991B1B', fontSize: '0.85rem' }}>
+                      ⚠️ {geoError}
+                    </div>
+                  ) : deliveryDivisions.length === 0 ? (
+                    <div style={{ padding: '12px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
+                      ℹ️ Delivery areas are being configured by store management. Please enter your full delivery address below.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                      {/* 1. Division Dropdown */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label htmlFor="geo-division" style={{ fontSize: '0.74rem' }}>Division *</label>
+                        <select
+                          id="geo-division"
+                          value={selectedDivisionId}
+                          onChange={handleDivisionChange}
+                          required
+                          style={{
+                            width: '100%',
+                            padding: '9px 10px',
+                            background: 'var(--paper)',
+                            border: '1px solid var(--line)',
+                            borderRadius: '5px',
+                            fontSize: '0.88rem',
+                            color: 'var(--ink)'
+                          }}
+                        >
+                          <option value="">Select Division</option>
+                          {deliveryDivisions.map((div) => (
+                            <option key={div.id} value={div.id}>
+                              {div.name} {div.nameBn ? `(${div.nameBn})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* 2. District Dropdown */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label htmlFor="geo-district" style={{ fontSize: '0.74rem' }}>District *</label>
+                        <select
+                          id="geo-district"
+                          value={selectedDistrictId}
+                          onChange={handleDistrictChange}
+                          disabled={!selectedDivisionId}
+                          required
+                          style={{
+                            width: '100%',
+                            padding: '9px 10px',
+                            background: selectedDivisionId ? 'var(--paper)' : 'rgba(0,0,0,0.03)',
+                            border: '1px solid var(--line)',
+                            borderRadius: '5px',
+                            fontSize: '0.88rem',
+                            color: selectedDivisionId ? 'var(--ink)' : 'var(--ink-soft)',
+                            cursor: selectedDivisionId ? 'pointer' : 'not-allowed'
+                          }}
+                        >
+                          <option value="">
+                            {selectedDivisionId ? 'Select District' : 'Choose Division first'}
+                          </option>
+                          {availableDistricts.map((dist) => (
+                            <option key={dist.id} value={dist.id}>
+                              {dist.name} {dist.nameBn ? `(${dist.nameBn})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* 3. Upazila Dropdown */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label htmlFor="geo-upazila" style={{ fontSize: '0.74rem' }}>Upazila / Area *</label>
+                        <select
+                          id="geo-upazila"
+                          value={selectedUpazilaId}
+                          onChange={handleUpazilaChange}
+                          disabled={!selectedDistrictId}
+                          required
+                          style={{
+                            width: '100%',
+                            padding: '9px 10px',
+                            background: selectedDistrictId ? 'var(--paper)' : 'rgba(0,0,0,0.03)',
+                            border: '1px solid var(--line)',
+                            borderRadius: '5px',
+                            fontSize: '0.88rem',
+                            color: selectedDistrictId ? 'var(--ink)' : 'var(--ink-soft)',
+                            cursor: selectedDistrictId ? 'pointer' : 'not-allowed'
+                          }}
+                        >
+                          <option value="">
+                            {selectedDistrictId ? 'Select Upazila' : 'Choose District first'}
+                          </option>
+                          {availableUpazilas.map((upz) => (
+                            <option key={upz.id} value={upz.id}>
+                              {upz.name} {upz.nameBn ? `(${upz.nameBn})` : ''} — ৳{upz.deliveryFee}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Active Area Confirmation Pill */}
+                  {selectedAreaDetails && (
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        padding: '8px 12px',
+                        background: 'rgba(201, 168, 118, 0.15)',
+                        border: '1px solid rgba(201, 168, 118, 0.4)',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '0.84rem'
+                      }}
+                    >
+                      <span style={{ color: 'var(--walnut)', fontWeight: 600 }}>
+                        🚚 Delivery to {selectedAreaDetails.name}: <strong>৳{deliveryFee}</strong>
+                      </span>
+                      <span style={{ color: 'var(--ink-soft)', fontSize: '0.78rem' }}>
+                        Est. {selectedAreaDetails.estimatedDays || '2-4 business days'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Detailed Street Address */}
                 <div className="form-group">
-                  <label htmlFor="address">Delivery Address (Trishal, Mymensingh & Nationwide) *</label>
+                  <label htmlFor="address">Detailed Street Address (Holding, Road, Village, Landmark) *</label>
                   <div className="input-icon-wrapper address-wrapper">
                     <span className="input-icon address-icon">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -289,9 +542,9 @@ export function CheckoutModal() {
                     </span>
                     <textarea
                       id="address"
-                      rows="3"
+                      rows="2"
                       required
-                      placeholder="Full street address, area, city..."
+                      placeholder="e.g. House #12, Road #4, Porabari Road, near CNG Station..."
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       className="profile-textarea"
@@ -328,11 +581,11 @@ export function CheckoutModal() {
                 {isCOD && (
                   <div className="cod-warning-card">
                     <div className="cod-warning-head">
-                      <span className="cod-warning-icon">️</span>
+                      <span className="cod-warning-icon">⚠️</span>
                       <strong>Advance Delivery Charge Notice</strong>
                     </div>
                     <p className="cod-warning-text">
-                      For <strong>Cash on Delivery (COD)</strong> orders, paying the shipping/delivery charge in advance is required to confirm order dispatch. Our representative will contact you at <strong>{formData.phone || 'your phone number'}</strong> to assist with the advance delivery fee.
+                      For <strong>Cash on Delivery (COD)</strong> orders, paying the shipping/delivery charge (<strong>৳{selectedAreaDetails ? deliveryFee : 120}</strong>) in advance is required to confirm order dispatch. Our representative will contact you at <strong>{formData.phone || 'your phone number'}</strong> to assist with the advance delivery fee.
                     </p>
                   </div>
                 )}
@@ -346,20 +599,20 @@ export function CheckoutModal() {
                     <div className={`mbk-card ${isbKash ? 'bkash-card' : 'nagad-card'}`}>
                       <div className="mbk-head">
                         <span className="mbk-provider-title">
-                          {isbKash ? ' bKash Personal / Merchant' : ' Nagad Personal / Merchant'}
+                          {isbKash ? '⚡ bKash Personal / Merchant' : '⚡ Nagad Personal / Merchant'}
                         </span>
                         <button
                           type="button"
                           className="mbk-copy-btn"
                           onClick={() => handleCopyNumber(activeMfsNumber, providerName)}
                         >
-                           {activeMfsNumber} (Tap to Copy)
+                          📋 {activeMfsNumber} (Tap to Copy)
                         </button>
                       </div>
 
                       <ol className="mbk-steps-list">
                         <li>Go to your {isbKash ? 'bKash App (*247#)' : 'Nagad App (*167#)'}.</li>
-                        <li>Send money/payment total <strong>৳{subtotal.toLocaleString()}</strong> to <strong>{activeMfsNumber}</strong>.</li>
+                        <li>Send money/payment total <strong>৳{grandTotal.toLocaleString()}</strong> (including ৳{deliveryFee} delivery charge) to <strong>{activeMfsNumber}</strong>.</li>
                         <li>Copy the Transaction ID (TrxID) from your SMS receipt and enter it below.</li>
                       </ol>
 
@@ -389,7 +642,7 @@ export function CheckoutModal() {
                 })()}
 
                 <button type="submit" className="auth-submit-btn" style={{ marginTop: '16px' }}>
-                  Confirm Order — ৳{subtotal.toLocaleString()}
+                  Confirm Order — ৳{grandTotal.toLocaleString()}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                     <polyline points="12 5 19 12 12 19"></polyline>

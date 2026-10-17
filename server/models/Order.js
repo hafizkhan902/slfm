@@ -42,6 +42,15 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    deliveryLocation: {
+      divisionId: { type: Number, default: null },
+      divisionName: { type: String, default: '' },
+      districtId: { type: Number, default: null },
+      districtName: { type: String, default: '' },
+      upazilaId: { type: Number, default: null },
+      upazilaName: { type: String, default: '' },
+      deliveryFee: { type: Number, default: 0 }
+    },
     paymentMethod: {
       type: String,
       required: true

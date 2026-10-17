@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductContext';
 
 export function Navbar({ onHomeClick, onCatalogClick }) {
-  const { totalItemsCount, setIsCartOpen, showToast } = useCart();
+  const { totalItemsCount, isCartOpen, setIsCartOpen, showToast } = useCart();
   const {
     currentUser,
     logout,
@@ -73,7 +73,8 @@ export function Navbar({ onHomeClick, onCatalogClick }) {
   };
 
   return (
-    <nav className="site-nav">
+    <>
+      <nav className="site-nav">
       <div className="wrap">
         <a href="#top" className="brand-logo-link" onClick={(e) => { e.preventDefault(); handleNavClick('#top'); }}>
           <img src="/logo.png" alt="ShahLajuk Furniture Mart - SLFM" className="site-logo-img" />
@@ -190,43 +191,6 @@ export function Navbar({ onHomeClick, onCatalogClick }) {
       {mobileMenuOpen && (
         <div className="mobile-menu-drawer">
           <ul className="mobile-nav-links">
-            {/* Mobile View Shopping Cart Option */}
-            <li>
-              <button
-                type="button"
-                className="mobile-drawer-btn cart-mobile-drawer-btn"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setIsCartOpen(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  padding: '12px 14px',
-                  background: 'var(--bg)',
-                  border: '1px solid var(--line)',
-                  borderRadius: '6px',
-                  fontWeight: '600',
-                  color: 'var(--ink)',
-                  marginBottom: '12px',
-                  cursor: 'pointer'
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <circle cx="9" cy="20" r="1.4" />
-                    <circle cx="18" cy="20" r="1.4" />
-                    <path d="M2 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H5.2" />
-                  </svg>
-                  Shopping Cart
-                </span>
-                <span className="cart-count-badge" style={{ position: 'static', transform: 'none' }}>
-                  {totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'}
-                </span>
-              </button>
-            </li>
             <li>
               <a href="#shop" onClick={(e) => { e.preventDefault(); handleNavClick('#shop'); }}>
                 All Products
@@ -316,6 +280,28 @@ export function Navbar({ onHomeClick, onCatalogClick }) {
           </ul>
         </div>
       )}
-    </nav>
+      </nav>
+
+      {/* Mobile Independent Floating Cart Button (Right Bottom Corner) */}
+      <button
+        type="button"
+        className={`mobile-floating-cart-btn ${isCartOpen || mobileMenuOpen ? 'drawer-open' : ''}`}
+        onClick={() => setIsCartOpen(true)}
+        aria-label={`Open Shopping Cart (${totalItemsCount} items)`}
+      >
+        <span className="floating-cart-icon-inner">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="20" r="1.4" />
+            <circle cx="18" cy="20" r="1.4" />
+            <path d="M2 3h2l2.4 12.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H5.2" />
+          </svg>
+          {totalItemsCount > 0 && (
+            <span className="floating-cart-count-badge" key={totalItemsCount}>
+              {totalItemsCount}
+            </span>
+          )}
+        </span>
+      </button>
+    </>
   );
 }

@@ -17,6 +17,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import visitorRoutes from './routes/visitorRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import deliveryRoutes from './routes/deliveryRoutes.js';
 
 // Load Environment Variables from server/.env
 const __filename = fileURLToPath(import.meta.url);
@@ -70,6 +71,7 @@ app.use('/api/admin/visitors', visitorRoutes);
 app.use('/api/visitors', visitorRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 // 5. Error Handling Middlewares
 app.use(notFound);

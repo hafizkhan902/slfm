@@ -30,6 +30,291 @@ export function AdminPanelModal() {
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [analyticsCustomerSort, setAnalyticsCustomerSort] = useState('spent-desc'); // 'spent-desc' | 'spent-asc' | 'orders-desc' | 'name-asc'
 
+  // ----------------------------------------------------
+  // Delivery Areas Management State & Effects
+  // ----------------------------------------------------
+  const [deliveryAreas, setDeliveryAreas] = useState([]);
+  const [deliveryMetrics, setDeliveryMetrics] = useState({ totalCount: 0, activeCount: 0, inactiveCount: 0, avgFee: 0 });
+  const [isLoadingDeliveryAreas, setIsLoadingDeliveryAreas] = useState(false);
+  const [deliveryFilterSearch, setDeliveryFilterSearch] = useState('');
+  const [deliveryFilterDivision, setDeliveryFilterDivision] = useState('all');
+  const [deliveryFilterDistrict, setDeliveryFilterDistrict] = useState('all');
+  const [deliveryFilterStatus, setDeliveryFilterStatus] = useState('all');
+  const [selectedTableAreaIds, setSelectedTableAreaIds] = useState([]);
+  const [editingAreaId, setEditingAreaId] = useState(null);
+  const [editingFeeValue, setEditingFeeValue] = useState('');
+  const [isBulkFeeModalOpen, setIsBulkFeeModalOpen] = useState(false);
+  const [bulkFeeInput, setBulkFeeInput] = useState(120);
+
+  // BD-Geo Cascading Selector State (BD-GeoAPI)
+  const [geoDivisions, setGeoDivisions] = useState([]);
+  const [selectedGeoDivisionId, setSelectedGeoDivisionId] = useState('');
+  const [geoDistricts, setGeoDistricts] = useState([]);
+  const [selectedGeoDistrictId, setSelectedGeoDistrictId] = useState('');
+  const [geoUpazilas, setGeoUpazilas] = useState([]);
+  const [isLoadingGeoUpazilas, setIsLoadingGeoUpazilas] = useState(false);
+  const [selectedUpazilaMap, setSelectedUpazilaMap] = useState({});
+  const [commonFeeInput, setCommonFeeInput] = useState(120);
+  const [isSavingAreas, setIsSavingAreas] = useState(false);
+
+  const fetchDeliveryAreas = async () => {
+    setIsLoadingDeliveryAreas(true);
+    try {
+      const res = await api.getAdminDeliveryAreas();
+      if (res && res.success) {
+        setDeliveryAreas(res.areas || []);
+        if (res.metrics) {
+          setDeliveryMetrics(res.metrics);
+        }
+      }
+    } catch (err) {
+      console.warn('[AdminPanel] Error fetching delivery areas:', err.message);
+    } finally {
+      setIsLoadingDeliveryAreas(false);
+    }
+  };
+
+  const fetchGeoDivisions = async () => {
+    try {
+      const res = await api.getGeoDivisions();
+      if (res && Array.isArray(res.data)) {
+        setGeoDivisions(res.data);
+      }
+    } catch (err) {
+      console.warn('[AdminPanel] Error loading BD divisions:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdminPanelOpen) {
+      fetchDeliveryAreas();
+      fetchGeoDivisions();
+    }
+  }, [isAdminPanelOpen]);
+
+  // Load districts when division selected in geo picker
+  useEffect(() => {
+    if (!selectedGeoDivisionId) {
+      setGeoDistricts([]);
+      setSelectedGeoDistrictId('');
+      setGeoUpazilas([]);
+      setSelectedUpazilaMap({});
+      return;
+    }
+    const loadDistricts = async () => {
+      try {
+        const res = await api.getGeoDistricts(selectedGeoDivisionId);
+        if (res && Array.isArray(res.data)) {
+          setGeoDistricts(res.data);
+        } else {
+          setGeoDistricts([]);
+        }
+        setSelectedGeoDistrictId('');
+        setGeoUpazilas([]);
+        setSelectedUpazilaMap({});
+      } catch (err) {
+        console.warn('[AdminPanel] Error loading districts:', err.message);
+      }
+    };
+    loadDistricts();
+  }, [selectedGeoDivisionId]);
+
+  // Load upazilas when district selected in geo picker
+  useEffect(() => {
+    if (!selectedGeoDistrictId) {
+      setGeoUpazilas([]);
+      setSelectedUpazilaMap({});
+      return;
+    }
+    const loadUpazilas = async () => {
+      setIsLoadingGeoUpazilas(true);
+      try {
+        const res = await api.getGeoUpazilas(selectedGeoDistrictId);
+        const upzs = (res && Array.isArray(res.data)) ? res.data : [];
+        setGeoUpazilas(upzs);
+
+        const initialMap = {};
+        for (const u of upzs) {
+          const already = deliveryAreas.find(a => Number(a.upazilaId) === Number(u.id));
+          initialMap[u.id] = {
+            checked: false,
+            fee: already ? already.deliveryFee : commonFeeInput,
+            estimatedDays: already ? (already.estimatedDays || '2-4 business days') : '2-4 business days'
+          };
+        }
+        setSelectedUpazilaMap(initialMap);
+      } catch (err) {
+        console.warn('[AdminPanel] Error loading upazilas:', err.message);
+      } finally {
+        setIsLoadingGeoUpazilas(false);
+      }
+    };
+    loadUpazilas();
+  }, [selectedGeoDistrictId, deliveryAreas]);
+
+  const handleToggleSelectAllUpazilas = (checkAll) => {
+    const updated = { ...selectedUpazilaMap };
+    for (const u of geoUpazilas) {
+      if (updated[u.id]) {
+        updated[u.id].checked = checkAll;
+      }
+    }
+    setSelectedUpazilaMap(updated);
+  };
+
+  const handleApplyCommonFee = () => {
+    const fee = Number(commonFeeInput);
+    if (isNaN(fee) || fee < 0) {
+      alert('Please enter a valid non-negative fee amount in BDT.');
+      return;
+    }
+    const updated = { ...selectedUpazilaMap };
+    for (const key of Object.keys(updated)) {
+      if (updated[key].checked) {
+        updated[key].fee = fee;
+      }
+    }
+    setSelectedUpazilaMap(updated);
+  };
+
+  const handleSaveConfiguredAreas = async () => {
+    const currentDiv = geoDivisions.find(d => String(d.id) === String(selectedGeoDivisionId));
+    const currentDist = geoDistricts.find(d => String(d.id) === String(selectedGeoDistrictId));
+
+    if (!currentDiv || !currentDist) {
+      alert('Please select both a Division and District from the cascading dropdowns.');
+      return;
+    }
+
+    const areasToSave = [];
+    for (const u of geoUpazilas) {
+      const entry = selectedUpazilaMap[u.id];
+      if (entry && entry.checked) {
+        areasToSave.push({
+          divisionId: Number(currentDiv.id),
+          divisionName: currentDiv.name,
+          divisionNameBn: currentDiv.nameBn || currentDiv.name_bn || '',
+          districtId: Number(currentDist.id),
+          districtName: currentDist.name,
+          districtNameBn: currentDist.nameBn || currentDist.name_bn || '',
+          upazilaId: Number(u.id),
+          upazilaName: u.name,
+          upazilaNameBn: u.nameBn || u.name_bn || '',
+          deliveryFee: Number(entry.fee || commonFeeInput || 120),
+          estimatedDays: entry.estimatedDays || '2-4 business days',
+          isActive: true
+        });
+      }
+    }
+
+    if (areasToSave.length === 0) {
+      alert('Please check at least one upazila to add/configure for delivery.');
+      return;
+    }
+
+    setIsSavingAreas(true);
+    try {
+      const res = await api.createDeliveryAreas({ areas: areasToSave });
+      alert(res.message || `Configured ${areasToSave.length} delivery area(s) successfully!`);
+      await fetchDeliveryAreas();
+      handleToggleSelectAllUpazilas(false);
+    } catch (err) {
+      alert(`Failed to save delivery areas: ${err.message}`);
+    } finally {
+      setIsSavingAreas(false);
+    }
+  };
+
+  const handleToggleAreaStatus = async (area) => {
+    try {
+      await api.toggleDeliveryAreaStatus(area._id, !area.isActive);
+      setDeliveryAreas(prev =>
+        prev.map(a => a._id === area._id ? { ...a, isActive: !a.isActive } : a)
+      );
+      setDeliveryMetrics(prev => ({
+        ...prev,
+        activeCount: area.isActive ? prev.activeCount - 1 : prev.activeCount + 1,
+        inactiveCount: area.isActive ? prev.inactiveCount + 1 : prev.inactiveCount - 1
+      }));
+    } catch (err) {
+      alert(`Failed to update status: ${err.message}`);
+    }
+  };
+
+  const handleSaveInlineFee = async (areaId) => {
+    const fee = Number(editingFeeValue);
+    if (isNaN(fee) || fee < 0) {
+      alert('Please enter a valid non-negative fee amount.');
+      return;
+    }
+    try {
+      await api.updateDeliveryArea(areaId, { deliveryFee: fee });
+      setDeliveryAreas(prev =>
+        prev.map(a => a._id === areaId ? { ...a, deliveryFee: fee } : a)
+      );
+      setEditingAreaId(null);
+    } catch (err) {
+      alert(`Failed to update delivery fee: ${err.message}`);
+    }
+  };
+
+  const handleDeleteArea = async (area) => {
+    if (!window.confirm(`Are you sure you want to remove "${area.upazilaName}" from delivery areas?`)) {
+      return;
+    }
+    try {
+      await api.deleteDeliveryArea(area._id);
+      setDeliveryAreas(prev => prev.filter(a => a._id !== area._id));
+      setSelectedTableAreaIds(prev => prev.filter(id => id !== area._id));
+      await fetchDeliveryAreas();
+    } catch (err) {
+      alert(`Failed to delete area: ${err.message}`);
+    }
+  };
+
+  const handleBulkActivate = async (isActive) => {
+    if (selectedTableAreaIds.length === 0) return;
+    try {
+      await api.bulkUpdateDeliveryStatus(selectedTableAreaIds, isActive);
+      await fetchDeliveryAreas();
+      setSelectedTableAreaIds([]);
+    } catch (err) {
+      alert(`Bulk update failed: ${err.message}`);
+    }
+  };
+
+  const handleBulkUpdateFee = async () => {
+    if (selectedTableAreaIds.length === 0) return;
+    const fee = Number(bulkFeeInput);
+    if (isNaN(fee) || fee < 0) {
+      alert('Please enter a valid non-negative fee amount.');
+      return;
+    }
+    try {
+      await api.bulkUpdateDeliveryFee(selectedTableAreaIds, fee);
+      await fetchDeliveryAreas();
+      setIsBulkFeeModalOpen(false);
+      setSelectedTableAreaIds([]);
+    } catch (err) {
+      alert(`Bulk fee update failed: ${err.message}`);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTableAreaIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedTableAreaIds.length} delivery area(s)?`)) {
+      return;
+    }
+    try {
+      await api.bulkDeleteDeliveryAreas(selectedTableAreaIds);
+      await fetchDeliveryAreas();
+      setSelectedTableAreaIds([]);
+    } catch (err) {
+      alert(`Bulk delete failed: ${err.message}`);
+    }
+  };
+
+
   // Expandable row state for mobile table details
   const [expandedRowIds, setExpandedRowIds] = useState({});
   const toggleRowExpand = (id) => {
@@ -604,6 +889,13 @@ export function AdminPanelModal() {
             onClick={() => { setActiveTab('visitors'); setSelectedUserId(null); }}
           >
              Visitor Traffic ({visitorLogs.length})
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'delivery' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('delivery'); setSelectedUserId(null); }}
+          >
+            🚚 Delivery Areas ({deliveryAreas.length})
           </button>
           <button
             type="button"
@@ -2156,6 +2448,701 @@ export function AdminPanelModal() {
             </div>
           </div>
         )}
+
+        {/* Tab Content 8: Delivery Areas & Upazila-Based Delivery Charges */}
+        {activeTab === 'delivery' && (() => {
+          const filteredDeliveryAreas = deliveryAreas.filter(area => {
+            if (deliveryFilterStatus === 'active' && !area.isActive) return false;
+            if (deliveryFilterStatus === 'inactive' && area.isActive) return false;
+            if (deliveryFilterDivision !== 'all' && String(area.divisionId) !== String(deliveryFilterDivision)) return false;
+            if (deliveryFilterDistrict !== 'all' && String(area.districtId) !== String(deliveryFilterDistrict)) return false;
+            if (deliveryFilterSearch.trim()) {
+              const q = deliveryFilterSearch.trim().toLowerCase();
+              const match =
+                (area.upazilaName && area.upazilaName.toLowerCase().includes(q)) ||
+                (area.upazilaNameBn && area.upazilaNameBn.includes(q)) ||
+                (area.districtName && area.districtName.toLowerCase().includes(q)) ||
+                (area.districtNameBn && area.districtNameBn.includes(q)) ||
+                (area.divisionName && area.divisionName.toLowerCase().includes(q)) ||
+                (area.divisionNameBn && area.divisionNameBn.includes(q));
+              if (!match) return false;
+            }
+            return true;
+          });
+
+          const configuredDivisions = Array.from(
+            new Map(deliveryAreas.map(a => [a.divisionId, { id: a.divisionId, name: a.divisionName }])).values()
+          );
+          const configuredDistricts = Array.from(
+            new Map(deliveryAreas.map(a => [a.districtId, { id: a.districtId, name: a.districtName, divisionId: a.divisionId }])).values()
+          ).filter(d => deliveryFilterDivision === 'all' || String(d.divisionId) === String(deliveryFilterDivision));
+
+          const allVisibleSelected = filteredDeliveryAreas.length > 0 &&
+            filteredDeliveryAreas.every(a => selectedTableAreaIds.includes(a._id));
+
+          const handleToggleSelectAllVisible = () => {
+            if (allVisibleSelected) {
+              const visibleIds = new Set(filteredDeliveryAreas.map(a => a._id));
+              setSelectedTableAreaIds(prev => prev.filter(id => !visibleIds.has(id)));
+            } else {
+              const visibleIds = filteredDeliveryAreas.map(a => a._id);
+              setSelectedTableAreaIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+            }
+          };
+
+          const handleToggleRowSelect = (id) => {
+            setSelectedTableAreaIds(prev =>
+              prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+            );
+          };
+
+          const selectedUpazilasCount = Object.values(selectedUpazilaMap).filter(v => v.checked).length;
+
+          return (
+            <div className="admin-tab-content">
+              {/* Header Banner */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.4rem', fontFamily: 'Fraunces, serif', color: 'var(--walnut)', marginBottom: '4px' }}>
+                    🚚 Delivery Areas & Upazila-Based Charges
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--ink-soft)', margin: 0 }}>
+                    Configure official delivery areas across Bangladesh using BD-GeoAPI. Set custom delivery fees (BDT) and activate coverage.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn-admin-cancel"
+                  onClick={() => { fetchDeliveryAreas(); fetchGeoDivisions(); }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.84rem', padding: '8px 14px' }}
+                >
+                  🔄 Refresh Data
+                </button>
+              </div>
+
+              {/* KPI Metrics Grid */}
+              <div className="admin-stats-grid" style={{ marginBottom: '24px' }}>
+                <div className="admin-stat-card">
+                  <span className="stat-label">TOTAL CONFIGURED AREAS</span>
+                  <span className="stat-value">{deliveryMetrics.totalCount || deliveryAreas.length}</span>
+                  <span className="stat-sub">Upazilas in store database</span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="stat-label">ACTIVE DELIVERY COVERAGE</span>
+                  <span className="stat-value" style={{ color: '#166534' }}>
+                    {deliveryMetrics.activeCount}
+                  </span>
+                  <span className="stat-sub">Available at checkout</span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="stat-label">INACTIVE / PAUSED AREAS</span>
+                  <span className="stat-value" style={{ color: '#991B1B' }}>
+                    {deliveryMetrics.inactiveCount}
+                  </span>
+                  <span className="stat-sub">Temporarily suspended</span>
+                </div>
+                <div className="admin-stat-card">
+                  <span className="stat-label">AVERAGE DELIVERY FEE</span>
+                  <span className="stat-value">৳{deliveryMetrics.avgFee}</span>
+                  <span className="stat-sub">Across all configured areas</span>
+                </div>
+              </div>
+
+              {/* Section 1: Add New Delivery Areas with Cascading BD-GeoAPI Picker */}
+              <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: '10px', padding: '22px', marginBottom: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', borderBottom: '1px solid var(--line)', paddingBottom: '12px' }}>
+                  <span style={{ fontSize: '1.2rem' }}>📍</span>
+                  <div>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
+                      Add & Configure Delivery Areas (BD-GeoAPI)
+                    </h4>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--ink-soft)' }}>
+                      Select a division and district to browse upazilas, set delivery fees, and activate delivery coverage.
+                    </span>
+                  </div>
+                </div>
+
+                {/* Cascading Selectors */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      1. Select Division *
+                    </label>
+                    <select
+                      value={selectedGeoDivisionId}
+                      onChange={(e) => setSelectedGeoDivisionId(e.target.value)}
+                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--bg)', fontSize: '0.92rem' }}
+                    >
+                      <option value="">-- Choose Division ({geoDivisions.length} available) --</option>
+                      {geoDivisions.map(div => (
+                        <option key={div.id} value={div.id}>
+                          {div.name} {div.nameBn ? `(${div.nameBn})` : ''} - {div.districtsCount} Districts
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      2. Select District *
+                    </label>
+                    <select
+                      value={selectedGeoDistrictId}
+                      onChange={(e) => setSelectedGeoDistrictId(e.target.value)}
+                      disabled={!selectedGeoDivisionId}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--line)',
+                        background: selectedGeoDivisionId ? 'var(--bg)' : 'rgba(0,0,0,0.03)',
+                        fontSize: '0.92rem',
+                        cursor: selectedGeoDivisionId ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      <option value="">
+                        {selectedGeoDivisionId ? `-- Choose District (${geoDistricts.length} available) --` : 'Select Division first'}
+                      </option>
+                      {geoDistricts.map(dist => (
+                        <option key={dist.id} value={dist.id}>
+                          {dist.name} {dist.nameBn ? `(${dist.nameBn})` : ''} - {dist.upazilasCount} Upazilas
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Upazilas Multi-selection Container */}
+                {selectedGeoDistrictId && (
+                  <div style={{ background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '8px', padding: '18px' }}>
+                    {isLoadingGeoUpazilas ? (
+                      <div style={{ textAlign: 'center', padding: '24px', color: 'var(--ink-soft)' }}>
+                        <span className="spinner" style={{ display: 'inline-block', width: '20px', height: '20px', border: '2px solid var(--walnut)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '8px' }}></span>
+                        <div>Loading upazilas from BD-GeoAPI...</div>
+                      </div>
+                    ) : geoUpazilas.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '16px', color: 'var(--ink-soft)' }}>
+                        No upazilas found for this district in BD-GeoAPI.
+                      </div>
+                    ) : (
+                      <>
+                        {/* Upazilas Toolbar */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid var(--line)', paddingBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--ink)' }}>
+                              Upazilas in District ({geoUpazilas.length})
+                            </span>
+                            <button
+                              type="button"
+                              className="btn-admin-cancel"
+                              style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                              onClick={() => handleToggleSelectAllUpazilas(true)}
+                            >
+                              Select All
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-admin-cancel"
+                              style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                              onClick={() => handleToggleSelectAllUpazilas(false)}
+                            >
+                              Deselect All
+                            </button>
+                          </div>
+
+                          {/* Common Fee Setter */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink-soft)' }}>
+                              Common Fee (BDT ৳):
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={commonFeeInput}
+                              onChange={(e) => setCommonFeeInput(e.target.value)}
+                              style={{ width: '85px', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--line)', fontSize: '0.88rem' }}
+                            />
+                            <button
+                              type="button"
+                              className="btn-admin-cancel"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'var(--paper)', fontWeight: 600 }}
+                              onClick={handleApplyCommonFee}
+                              title="Set this fee for all currently selected upazilas"
+                            >
+                              Apply to Selected
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Upazila Cards Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px', maxHeight: '340px', overflowY: 'auto', paddingRight: '4px', marginBottom: '18px' }}>
+                          {geoUpazilas.map(upz => {
+                            const entry = selectedUpazilaMap[upz.id] || { checked: false, fee: commonFeeInput };
+                            const alreadyConfigured = deliveryAreas.find(a => Number(a.upazilaId) === Number(upz.id));
+
+                            return (
+                              <div
+                                key={upz.id}
+                                style={{
+                                  background: entry.checked ? 'rgba(201, 168, 118, 0.12)' : 'var(--paper)',
+                                  border: entry.checked ? '1.5px solid var(--walnut)' : '1px solid var(--line)',
+                                  borderRadius: '6px',
+                                  padding: '12px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px',
+                                  transition: 'border 0.2s, background 0.2s'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0, fontWeight: 600, fontSize: '0.92rem', color: 'var(--ink)' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={Boolean(entry.checked)}
+                                      onChange={(e) => {
+                                        setSelectedUpazilaMap(prev => ({
+                                          ...prev,
+                                          [upz.id]: {
+                                            ...(prev[upz.id] || {}),
+                                            checked: e.target.checked,
+                                            fee: prev[upz.id]?.fee !== undefined ? prev[upz.id].fee : commonFeeInput
+                                          }
+                                        }));
+                                      }}
+                                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                    <span>
+                                      {upz.name} {upz.nameBn ? <span style={{ color: 'var(--ink-soft)', fontWeight: 400 }}>({upz.nameBn})</span> : ''}
+                                    </span>
+                                  </label>
+                                  {alreadyConfigured ? (
+                                    <span style={{ fontSize: '0.72rem', padding: '2px 6px', borderRadius: '4px', background: alreadyConfigured.isActive ? '#DCFCE7' : '#FEE2E2', color: alreadyConfigured.isActive ? '#166534' : '#991B1B', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                      {alreadyConfigured.isActive ? `৳${alreadyConfigured.deliveryFee}` : 'Paused'}
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.72rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.06)', color: 'var(--ink-soft)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Individual Fee Input */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                                  <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+                                    Fee (BDT ৳):
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={entry.fee !== undefined ? entry.fee : commonFeeInput}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setSelectedUpazilaMap(prev => ({
+                                        ...prev,
+                                        [upz.id]: {
+                                          ...(prev[upz.id] || {}),
+                                          fee: val === '' ? '' : Number(val)
+                                        }
+                                      }));
+                                    }}
+                                    style={{
+                                      width: '90px',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      border: '1px solid var(--line)',
+                                      fontSize: '0.86rem',
+                                      fontWeight: 600,
+                                      color: 'var(--walnut)'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Save Action Bar */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderTop: '1px solid var(--line)', paddingTop: '14px' }}>
+                          <span style={{ fontSize: '0.86rem', color: 'var(--ink-soft)' }}>
+                            Selected for configuration: <strong style={{ color: 'var(--walnut)' }}>{selectedUpazilasCount} upazila(s)</strong>
+                          </span>
+                          <button
+                            type="button"
+                            className="btn-admin-primary"
+                            disabled={selectedUpazilasCount === 0 || isSavingAreas}
+                            onClick={handleSaveConfiguredAreas}
+                            style={{
+                              padding: '10px 22px',
+                              fontSize: '0.9rem',
+                              opacity: selectedUpazilasCount === 0 ? 0.6 : 1,
+                              cursor: selectedUpazilasCount === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            {isSavingAreas ? 'Saving Areas...' : `Save ${selectedUpazilasCount} Delivery Area(s)`}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Manage Configured Delivery Areas Table */}
+              <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: '10px', padding: '22px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.2rem' }}>📋</span>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--ink)', margin: 0 }}>
+                      Configured Delivery Areas ({deliveryAreas.length})
+                    </h4>
+                  </div>
+
+                  {/* Bulk Actions Toolbar */}
+                  {selectedTableAreaIds.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(201, 168, 118, 0.15)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(201, 168, 118, 0.4)', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--walnut)' }}>
+                        {selectedTableAreaIds.length} Selected:
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-admin-cancel"
+                        onClick={() => handleBulkActivate(true)}
+                        style={{ padding: '4px 8px', fontSize: '0.78rem', background: '#DCFCE7', color: '#166534', border: 'none', fontWeight: 600 }}
+                      >
+                        ✓ Activate
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-cancel"
+                        onClick={() => handleBulkActivate(false)}
+                        style={{ padding: '4px 8px', fontSize: '0.78rem', background: '#FEE2E2', color: '#991B1B', border: 'none', fontWeight: 600 }}
+                      >
+                        ⏸ Deactivate
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-cancel"
+                        onClick={() => setIsBulkFeeModalOpen(true)}
+                        style={{ padding: '4px 8px', fontSize: '0.78rem', background: 'var(--paper)', fontWeight: 600 }}
+                      >
+                        ✏️ Set Fee
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-cancel"
+                        onClick={handleBulkDelete}
+                        style={{ padding: '4px 8px', fontSize: '0.78rem', background: '#991B1B', color: '#FFFFFF', border: 'none', fontWeight: 600 }}
+                      >
+                        🗑 Delete
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-cancel"
+                        onClick={() => setSelectedTableAreaIds([])}
+                        style={{ padding: '4px 6px', fontSize: '0.74rem' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filters & Search Toolbar */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '18px', background: 'var(--bg)', padding: '12px', borderRadius: '8px' }}>
+                  {/* Search */}
+                  <div>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--ink-soft)', textTransform: 'uppercase' }}>Search Areas</label>
+                    <input
+                      type="text"
+                      placeholder="Search upazila, district..."
+                      value={deliveryFilterSearch}
+                      onChange={(e) => setDeliveryFilterSearch(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '5px', border: '1px solid var(--line)', fontSize: '0.88rem' }}
+                    />
+                  </div>
+
+                  {/* Filter Division */}
+                  <div>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--ink-soft)', textTransform: 'uppercase' }}>Filter Division</label>
+                    <select
+                      value={deliveryFilterDivision}
+                      onChange={(e) => {
+                        setDeliveryFilterDivision(e.target.value);
+                        setDeliveryFilterDistrict('all');
+                      }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '5px', border: '1px solid var(--line)', fontSize: '0.88rem' }}
+                    >
+                      <option value="all">All Divisions ({configuredDivisions.length})</option>
+                      {configuredDivisions.map(div => (
+                        <option key={div.id} value={div.id}>{div.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filter District */}
+                  <div>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--ink-soft)', textTransform: 'uppercase' }}>Filter District</label>
+                    <select
+                      value={deliveryFilterDistrict}
+                      onChange={(e) => setDeliveryFilterDistrict(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '5px', border: '1px solid var(--line)', fontSize: '0.88rem' }}
+                    >
+                      <option value="all">All Districts ({configuredDistricts.length})</option>
+                      {configuredDistricts.map(dist => (
+                        <option key={dist.id} value={dist.id}>{dist.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filter Status */}
+                  <div>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--ink-soft)', textTransform: 'uppercase' }}>Filter Status</label>
+                    <select
+                      value={deliveryFilterStatus}
+                      onChange={(e) => setDeliveryFilterStatus(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '5px', border: '1px solid var(--line)', fontSize: '0.88rem' }}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="active">Active Only ({deliveryMetrics.activeCount})</option>
+                      <option value="inactive">Inactive Only ({deliveryMetrics.inactiveCount})</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Table Data */}
+                {isLoadingDeliveryAreas ? (
+                  <div style={{ textAlign: 'center', padding: '36px', color: 'var(--ink-soft)' }}>
+                    <span className="spinner" style={{ display: 'inline-block', width: '22px', height: '22px', border: '2px solid var(--walnut)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '8px' }}></span>
+                    <div>Loading configured delivery areas...</div>
+                  </div>
+                ) : filteredDeliveryAreas.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--bg)', borderRadius: '8px', color: 'var(--ink-soft)' }}>
+                    <p style={{ margin: 0, fontSize: '0.95rem' }}>
+                      {deliveryAreas.length === 0
+                        ? 'No delivery areas have been configured yet. Use the area picker above to configure your first delivery upazila.'
+                        : 'No delivery areas match the selected filters.'}
+                    </p>
+                    {(deliveryFilterSearch || deliveryFilterDivision !== 'all' || deliveryFilterDistrict !== 'all' || deliveryFilterStatus !== 'all') && (
+                      <button
+                        type="button"
+                        className="btn-admin-cancel"
+                        style={{ marginTop: '12px', fontSize: '0.84rem' }}
+                        onClick={() => {
+                          setDeliveryFilterSearch('');
+                          setDeliveryFilterDivision('all');
+                          setDeliveryFilterDistrict('all');
+                          setDeliveryFilterStatus('all');
+                        }}
+                      >
+                        Reset Filters
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg)', borderBottom: '2px solid var(--line)', textAlign: 'left' }}>
+                          <th style={{ padding: '10px 12px', width: '36px' }}>
+                            <input
+                              type="checkbox"
+                              checked={allVisibleSelected}
+                              onChange={handleToggleSelectAllVisible}
+                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                              title="Select / Deselect all visible areas"
+                            />
+                          </th>
+                          <th style={{ padding: '10px 12px' }}>Upazila (Area)</th>
+                          <th style={{ padding: '10px 12px' }}>District</th>
+                          <th style={{ padding: '10px 12px' }}>Division</th>
+                          <th style={{ padding: '10px 12px' }}>Delivery Fee (BDT)</th>
+                          <th style={{ padding: '10px 12px' }}>Delivery Time</th>
+                          <th style={{ padding: '10px 12px' }}>Status</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredDeliveryAreas.map((area) => {
+                          const isSelected = selectedTableAreaIds.includes(area._id);
+                          const isEditingThis = editingAreaId === area._id;
+
+                          return (
+                            <tr
+                              key={area._id}
+                              style={{
+                                borderBottom: '1px solid var(--line)',
+                                background: isSelected ? 'rgba(201, 168, 118, 0.08)' : 'transparent',
+                                transition: 'background 0.15s'
+                              }}
+                            >
+                              <td style={{ padding: '10px 12px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleRowSelect(area._id)}
+                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: 600, color: 'var(--ink)' }}>
+                                {area.upazilaName}
+                                {area.upazilaNameBn ? (
+                                  <span style={{ color: 'var(--ink-soft)', fontWeight: 400, marginLeft: '6px', fontSize: '0.82rem' }}>
+                                    ({area.upazilaNameBn})
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--ink)' }}>
+                                {area.districtName}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--ink-soft)' }}>
+                                {area.divisionName}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                {isEditingThis ? (
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={editingFeeValue}
+                                      onChange={(e) => setEditingFeeValue(e.target.value)}
+                                      style={{ width: '80px', padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--walnut)', fontSize: '0.86rem', fontWeight: 700 }}
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      className="btn-admin-cancel"
+                                      onClick={() => handleSaveInlineFee(area._id)}
+                                      style={{ padding: '3px 8px', fontSize: '0.76rem', background: '#DCFCE7', color: '#166534', border: 'none', fontWeight: 600 }}
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-admin-cancel"
+                                      onClick={() => setEditingAreaId(null)}
+                                      style={{ padding: '3px 6px', fontSize: '0.76rem' }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                    <strong style={{ color: 'var(--walnut)', fontSize: '0.94rem' }}>
+                                      ৳{area.deliveryFee}
+                                    </strong>
+                                    <button
+                                      type="button"
+                                      className="btn-admin-cancel"
+                                      onClick={() => {
+                                        setEditingAreaId(area._id);
+                                        setEditingFeeValue(area.deliveryFee);
+                                      }}
+                                      title="Edit Fee"
+                                      style={{ padding: '2px 6px', fontSize: '0.72rem', borderRadius: '3px' }}
+                                    >
+                                      ✏️
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--ink-soft)', fontSize: '0.82rem' }}>
+                                {area.estimatedDays || '2-4 business days'}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleAreaStatus(area)}
+                                  style={{
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    padding: '4px 10px',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    background: area.isActive ? '#DCFCE7' : '#FEE2E2',
+                                    color: area.isActive ? '#166534' : '#991B1B',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="Click to toggle Active / Inactive"
+                                >
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: area.isActive ? '#166534' : '#991B1B' }}></span>
+                                  {area.isActive ? 'Active' : 'Inactive'}
+                                </button>
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteArea(area)}
+                                  style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#991B1B',
+                                    cursor: 'pointer',
+                                    fontSize: '0.82rem',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px'
+                                  }}
+                                  title="Delete configured area"
+                                >
+                                  🗑
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Bulk Delivery Fee Update Modal */}
+              {isBulkFeeModalOpen && (
+                <div className="admin-subform-backdrop" style={{ zIndex: 1200 }}>
+                  <div className="admin-subform-card" style={{ maxWidth: '420px' }}>
+                    <h3 style={{ fontSize: '1.2rem', color: 'var(--walnut)', marginBottom: '8px' }}>
+                      ✏️ Set Common Delivery Fee
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--ink-soft)', marginBottom: '16px' }}>
+                      Apply a unified delivery fee for <strong>{selectedTableAreaIds.length}</strong> selected area(s).
+                    </p>
+
+                    <div className="form-group" style={{ marginBottom: '20px' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>Delivery Fee (BDT ৳) *</label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        value={bulkFeeInput}
+                        onChange={(e) => setBulkFeeInput(e.target.value)}
+                        placeholder="e.g. 150"
+                        style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', fontSize: '1rem', fontWeight: 700 }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                      <button
+                        type="button"
+                        className="btn-admin-cancel"
+                        onClick={() => setIsBulkFeeModalOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-primary"
+                        onClick={handleBulkUpdateFee}
+                      >
+                        Apply to {selectedTableAreaIds.length} Area(s)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Product Add/Edit Form Modal */}
         {isProductFormOpen && (
