@@ -20,7 +20,7 @@ export function AdminPanelModal() {
     deletePromo
   } = useProducts();
 
-  const { ordersDb, usersDb, updateOrderStatus, updateUserStatus, currentUser } = useAuth();
+  const { ordersDb, usersDb, updateOrderStatus, updateUserStatus, currentUser, fetchLatestOrders } = useAuth();
 
   const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' | 'products' | 'promos' | 'orders' | 'users' | 'visitors'
   const [productSearch, setProductSearch] = useState('');
@@ -57,6 +57,99 @@ export function AdminPanelModal() {
   const [commonFeeInput, setCommonFeeInput] = useState(120);
   const [isSavingAreas, setIsSavingAreas] = useState(false);
 
+  // ----------------------------------------------------
+  // Custom Furniture Inquiries Management State
+  // ----------------------------------------------------
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiryMetrics, setInquiryMetrics] = useState({ total: 0, pendingReview: 0, contacted: 0, confirmed: 0, cancelled: 0 });
+  const [isLoadingInquiries, setIsLoadingInquiries] = useState(false);
+  const [inquirySearch, setInquirySearch] = useState('');
+  const [inquiryStatusFilter, setInquiryStatusFilter] = useState('all');
+  const [activeImagePreview, setActiveImagePreview] = useState(null);
+  const [confirmModalData, setConfirmModalData] = useState(null);
+
+  const fetchInquiries = async () => {
+    setIsLoadingInquiries(true);
+    try {
+      const res = await api.getAdminInquiries();
+      if (res && res.success) {
+        setInquiries(res.inquiries || []);
+        if (res.metrics) {
+          setInquiryMetrics(res.metrics);
+        }
+      }
+    } catch (err) {
+      console.warn('[AdminPanel] Error fetching inquiries:', err.message);
+    } finally {
+      setIsLoadingInquiries(false);
+    }
+  };
+
+  const handleOpenConfirmModal = (inq) => {
+    setConfirmModalData({
+      inquiry: inq,
+      agreedPrice: inq.confirmedPrice || '',
+      shippingAddress: inq.shippingAddress || inq.userId?.address || '',
+      paymentMethod: 'Cash on Delivery (Custom Order)',
+      notes: inq.adminNotes || '',
+      isSubmitting: false
+    });
+  };
+
+  const handleConfirmOrderSubmit = async (e) => {
+    e.preventDefault();
+    if (!confirmModalData || !confirmModalData.inquiry) return;
+    const { inquiry, agreedPrice, shippingAddress, paymentMethod, notes } = confirmModalData;
+
+    const priceNum = parseFloat(agreedPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert('Please enter a valid agreed price (৳) greater than 0.');
+      return;
+    }
+
+    setConfirmModalData(prev => ({ ...prev, isSubmitting: true }));
+    try {
+      const res = await api.confirmInquiryToOrder(inquiry._id, {
+        confirmedPrice: priceNum,
+        shippingAddress: (shippingAddress || '').trim() || 'To be confirmed upon call',
+        paymentMethod,
+        adminNotes: notes
+      });
+
+      if (res && res.success) {
+        alert(`🎉 Custom inquiry confirmed! Order #${res.order?.orderNumber || ''} created with Pending status.`);
+        setConfirmModalData(null);
+        await fetchInquiries();
+        if (fetchLatestOrders) {
+          await fetchLatestOrders();
+        }
+      }
+    } catch (err) {
+      alert(`Failed to confirm custom order: ${err.message}`);
+      setConfirmModalData(prev => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  const handleUpdateInquiryStatus = async (inq, newStatus) => {
+    if (newStatus === 'Confirmed' && !inq.convertedOrderId) {
+      handleOpenConfirmModal(inq);
+      return;
+    }
+
+    try {
+      const res = await api.updateInquiryStatus(inq._id, newStatus);
+      if (res && res.success) {
+        setInquiries(prev => prev.map(item => item._id === inq._id ? { ...item, status: newStatus } : item));
+        fetchInquiries();
+        if (fetchLatestOrders) {
+          await fetchLatestOrders();
+        }
+      }
+    } catch (err) {
+      alert(`Failed to update inquiry status: ${err.message}`);
+    }
+  };
+
   const fetchDeliveryAreas = async () => {
     setIsLoadingDeliveryAreas(true);
     try {
@@ -89,8 +182,10 @@ export function AdminPanelModal() {
     if (isAdminPanelOpen) {
       fetchDeliveryAreas();
       fetchGeoDivisions();
+      fetchInquiries();
     }
   }, [isAdminPanelOpen]);
+
 
   // Load districts when division selected in geo picker
   useEffect(() => {
@@ -546,6 +641,129 @@ export function AdminPanelModal() {
     }
   };
 
+  // ----------------------------------------------------
+  // Architecture & Themes Section Management State
+  // ----------------------------------------------------
+  const [themeForm, setThemeForm] = useState({
+    eyebrow: 'CURATED ARCHITECTURE & THEMES',
+    heading: 'Spaces Sculpted for Serenity',
+    subheading: 'We design with the belief that calm interiors create quiet minds. Explore our architectural collections curated for modern living.',
+    cards: [
+      {
+        badgeText: 'THEME 01',
+        imageUrl: '',
+        category: 'LIVING & LOUNGE',
+        title: 'The Minimalist Living Room',
+        description: 'Solid Chittagong teak sofas and architectural low-tables. Proportion, tactile grain, and generous negative space that allows rooms to breathe.',
+        buttonText: 'Explore Living Collection',
+        buttonLink: 'room:living-room',
+        order: 1
+      },
+      {
+        badgeText: 'THEME 02',
+        imageUrl: '',
+        category: 'MATERIALITY',
+        title: 'Warm Japandi Textures',
+        description: "An organic dialogue between raw timber and moisture-sealed melamine board. Crafted for Bangladesh's humid seasons without warping.",
+        buttonText: 'Learn About Board Durability',
+        buttonLink: '#material',
+        order: 2
+      },
+      {
+        badgeText: 'THEME 03',
+        imageUrl: '',
+        category: 'STUDY & STORAGE',
+        title: 'Modular Architectural Joinery',
+        description: 'Clean-lined study desks, ergonomic bookshelves, and multi-door wardrobes engineered with smooth silent hardware for lifetime utility.',
+        buttonText: 'Explore Study & Desks',
+        buttonLink: 'room:reading-room',
+        order: 3
+      }
+    ]
+  });
+  const [isLoadingThemes, setIsLoadingThemes] = useState(false);
+  const [isSavingThemes, setIsSavingThemes] = useState(false);
+  const [themeToast, setThemeToast] = useState(null); // { type: 'success' | 'error', message: string }
+  const [uploadingCardIndex, setUploadingCardIndex] = useState(null);
+
+  const fetchThemeSection = async () => {
+    setIsLoadingThemes(true);
+    try {
+      const res = await api.getThemeSection();
+      if (res && res.data) {
+        setThemeForm({
+          eyebrow: res.data.eyebrow || '',
+          heading: res.data.heading || '',
+          subheading: res.data.subheading || '',
+          cards: Array.isArray(res.data.cards) && res.data.cards.length > 0 ? res.data.cards : themeForm.cards
+        });
+      }
+    } catch (err) {
+      console.warn('[AdminPanelModal] Failed to load theme section:', err.message);
+    } finally {
+      setIsLoadingThemes(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdminPanelOpen && activeTab !== 'themes') return;
+    fetchThemeSection();
+  }, [isAdminPanelOpen, activeTab]);
+
+  const handleCardFieldChange = (index, field, value) => {
+    setThemeForm((prev) => {
+      const updatedCards = [...prev.cards];
+      updatedCards[index] = {
+        ...updatedCards[index],
+        [field]: value
+      };
+      return { ...prev, cards: updatedCards };
+    });
+  };
+
+  const handleCardImageUpload = async (index, file) => {
+    if (!file) return;
+    setUploadingCardIndex(index);
+    try {
+      const res = await api.uploadImage(file);
+      if (res && res.url) {
+        handleCardFieldChange(index, 'imageUrl', res.url);
+        setThemeToast({ type: 'success', message: `Theme 0${index + 1} image uploaded successfully!` });
+      }
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        handleCardFieldChange(index, 'imageUrl', reader.result);
+        setThemeToast({ type: 'success', message: `Theme 0${index + 1} image preview loaded!` });
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploadingCardIndex(null);
+      setTimeout(() => setThemeToast(null), 3500);
+    }
+  };
+
+  const handleSaveThemeSection = async (e) => {
+    if (e) e.preventDefault();
+    setIsSavingThemes(true);
+    setThemeToast(null);
+    try {
+      const res = await api.updateThemeSection(themeForm);
+      if (res && res.success) {
+        setThemeToast({ type: 'success', message: 'Architecture & Themes section saved successfully!' });
+      } else {
+        throw new Error(res.message || 'Failed to save');
+      }
+    } catch (err) {
+      console.error('Failed to save theme section:', err);
+      setThemeToast({ type: 'error', message: err.message || 'Failed to save changes.' });
+    } finally {
+      setIsSavingThemes(false);
+      setTimeout(() => setThemeToast(null), 4000);
+    }
+  };
+
   // Product Form Modal state (Add / Edit)
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
@@ -899,11 +1117,26 @@ export function AdminPanelModal() {
           </button>
           <button
             type="button"
+            className={`admin-tab-btn ${activeTab === 'inquiries' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('inquiries'); setSelectedUserId(null); }}
+          >
+            📐 Custom Inquiries ({inquiries.length})
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'themes' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('themes'); setSelectedUserId(null); }}
+          >
+            Architecture & Themes Section
+          </button>
+          <button
+            type="button"
             className={`admin-tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => { setActiveTab('settings'); setSelectedUserId(null); }}
           >
             Settings
           </button>
+
         </div>
 
         {/* Tab Content 1: Analytics & Store Insights */}
@@ -1385,6 +1618,7 @@ export function AdminPanelModal() {
                 style={{ padding: '10px 16px', borderRadius: '0' }}
               >
                 <option value="all">All Order Statuses</option>
+                <option value="Pending">Pending (Custom Orders)</option>
                 <option value="Placed">Placed</option>
                 <option value="Confirmed">Confirmed</option>
                 <option value="Shipped">Shipped</option>
@@ -1456,11 +1690,19 @@ export function AdminPanelModal() {
                     <tbody>
                       {filteredOrders.map((order) => {
                         const isExpanded = !!expandedRowIds[`order-${order.id}`];
+                        const isCustomOrder = Boolean(order.customInquiryId || order.items?.some(i => i.product?.isCustom));
                         return (
                           <tr key={order.id} className={isExpanded ? 'row-expanded' : ''}>
                             <td>
                               <strong>{order.id}</strong>
                               <div className="table-subid">{new Date(order.createdAt).toLocaleDateString()}</div>
+                              {isCustomOrder && (
+                                <div style={{ marginTop: '4px' }}>
+                                  <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', background: '#FEF3C7', color: '#92400E', padding: '2px 6px', borderRadius: '4px', border: '1px solid #FCD34D', display: 'inline-block' }}>
+                                    BESPOKE COMMISSION
+                                  </span>
+                                </div>
+                              )}
                             </td>
                             <td>
                               <div><strong>{order.customerName}</strong></div>
@@ -1525,7 +1767,14 @@ export function AdminPanelModal() {
                                     <strong>Items Purchased ({order.items?.length || 0}):</strong>
                                     <div style={{ marginTop: '4px', paddingLeft: '8px' }}>
                                       {order.items?.map((item, idx) => (
-                                        <div key={idx}>• {item.product?.name || item.name} x {item.quantity} (৳{(item.price || item.product?.price || 0) * item.quantity})</div>
+                                        <div key={idx} style={{ marginBottom: '4px' }}>
+                                          • {item.product?.name || item.name} x {item.quantity} (৳{(item.price || item.product?.price || 0) * item.quantity})
+                                          {item.product?.dimensions && (
+                                            <div style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', paddingLeft: '10px' }}>
+                                              Dimensions: {item.product.dimensions}
+                                            </div>
+                                          )}
+                                        </div>
                                       ))}
                                     </div>
                                   </div>
@@ -1549,6 +1798,11 @@ export function AdminPanelModal() {
                                 <select
                                   value={order.status}
                                   className="admin-status-select"
+                                  style={{
+                                    fontWeight: 600,
+                                    background: order.status === 'Pending' ? '#FEF3C7' : undefined,
+                                    color: order.status === 'Pending' ? '#92400E' : undefined
+                                  }}
                                   onChange={async (e) => {
                                     const newSt = e.target.value;
                                     try {
@@ -1558,6 +1812,7 @@ export function AdminPanelModal() {
                                     }
                                   }}
                                 >
+                                  <option value="Pending">Pending</option>
                                   <option value="Placed">Placed</option>
                                   <option value="Confirmed">Confirmed</option>
                                   <option value="Shipped">Shipped</option>
@@ -1797,6 +2052,7 @@ export function AdminPanelModal() {
                                       }
                                     }}
                                   >
+                                    <option value="Pending">Pending</option>
                                     <option value="Placed">Placed</option>
                                     <option value="Confirmed">Confirmed</option>
                                     <option value="Shipped">Shipped</option>
@@ -2155,8 +2411,430 @@ export function AdminPanelModal() {
           </div>
         )}
 
+        {/* Tab Content: Custom Furniture Inquiries & Bespoke Commissions */}
+        {activeTab === 'inquiries' && (
+          <div className="admin-tab-content">
+            {/* KPI Stats Grid */}
+            <div className="admin-stats-grid" style={{ marginBottom: '24px' }}>
+              <div className="admin-stat-card">
+                <span className="stat-label">TOTAL INQUIRIES</span>
+                <span className="stat-value">{inquiryMetrics.total || inquiries.length}</span>
+                <span className="stat-sub">Lifetime bespoke requests</span>
+              </div>
+              <div className="admin-stat-card">
+                <span className="stat-label">PENDING REVIEW</span>
+                <span className="stat-value" style={{ color: '#D97706' }}>
+                  {inquiryMetrics.pendingReview || inquiries.filter(i => i.status === 'Pending Review').length}
+                </span>
+                <span className="stat-sub">Awaiting customer callback</span>
+              </div>
+              <div className="admin-stat-card">
+                <span className="stat-label">CONTACTED</span>
+                <span className="stat-value" style={{ color: '#2563EB' }}>
+                  {inquiryMetrics.contacted || inquiries.filter(i => i.status === 'Contacted').length}
+                </span>
+                <span className="stat-sub">Quote discussions ongoing</span>
+              </div>
+              <div className="admin-stat-card">
+                <span className="stat-label">CONFIRMED</span>
+                <span className="stat-value" style={{ color: '#16A34A' }}>
+                  {inquiryMetrics.confirmed || inquiries.filter(i => i.status === 'Confirmed').length}
+                </span>
+                <span className="stat-sub">Orders placed in workshop</span>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '12px', flex: 1, minWidth: '280px' }}>
+                <input
+                  type="text"
+                  className="editorial-input"
+                  style={{ flex: 1, maxWidth: '360px' }}
+                  placeholder="Search by customer name, phone, or furniture type..."
+                  value={inquirySearch}
+                  onChange={(e) => setInquirySearch(e.target.value)}
+                />
+                <select
+                  className="editorial-select"
+                  style={{ width: '180px' }}
+                  value={inquiryStatusFilter}
+                  onChange={(e) => setInquiryStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Pending Review">Pending Review</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                className="btn-editorial-ghost"
+                onClick={fetchInquiries}
+                disabled={isLoadingInquiries}
+              >
+                {isLoadingInquiries ? 'Refreshing...' : '↻ Refresh Inquiries'}
+              </button>
+            </div>
+
+            {/* Inquiries Cards List */}
+            {(() => {
+              const filteredInquiries = inquiries.filter((inq) => {
+                if (inquiryStatusFilter !== 'all' && inq.status !== inquiryStatusFilter) return false;
+                if (inquirySearch.trim()) {
+                  const q = inquirySearch.toLowerCase();
+                  const matchName = inq.customerName?.toLowerCase().includes(q);
+                  const matchPhone = inq.phone?.includes(q);
+                  const matchType = inq.productType?.toLowerCase().includes(q);
+                  const matchDesc = inq.customDetails?.description?.toLowerCase().includes(q);
+                  if (!matchName && !matchPhone && !matchType && !matchDesc) return false;
+                }
+                return true;
+              });
+
+              if (filteredInquiries.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--paper)', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '12px' }}>📐</div>
+                    <h4 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.2rem', color: 'var(--walnut)' }}>No Custom Inquiries Found</h4>
+                    <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem', maxWidth: '420px', margin: '8px auto 0' }}>
+                      {inquirySearch || inquiryStatusFilter !== 'all'
+                        ? 'Try clearing your search query or status filter.'
+                        : 'Custom furniture requests submitted by customers through the website will appear here for review and callback.'}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {filteredInquiries.map((inq) => {
+                    const formattedDate = inq.createdAt
+                      ? new Date(inq.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      : 'Recent';
+
+                    const cleanPhone = (inq.phone || '').replace(/\D/g, '');
+                    const waNumber = cleanPhone.startsWith('880') ? cleanPhone : cleanPhone.startsWith('0') ? `88${cleanPhone}` : `880${cleanPhone}`;
+
+                    return (
+                      <div
+                        key={inq._id}
+                        style={{
+                          background: 'var(--paper)',
+                          border: '1px solid var(--line)',
+                          borderRadius: '12px',
+                          padding: '20px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                        }}
+                      >
+                        {/* Header Row: ID, Date & Status */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid var(--line)', paddingBottom: '12px', marginBottom: '16px' }}>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--ink-soft)', textTransform: 'uppercase' }}>
+                              INQUIRY #{inq._id.slice(-6).toUpperCase()} · {formattedDate}
+                            </span>
+                            <h4 style={{ fontSize: '1.15rem', fontFamily: 'Fraunces, serif', color: 'var(--walnut)', margin: '4px 0 0' }}>
+                              {inq.productType}
+                            </h4>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            {!inq.convertedOrderId && inq.status !== 'Confirmed' && (
+                              <button
+                                type="button"
+                                style={{
+                                  background: '#15803D',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '6px 12px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                                onClick={() => handleOpenConfirmModal(inq)}
+                                title="Confirm inquiry and convert into a Pending workshop order"
+                              >
+                                Confirm & Move to Orders
+                              </button>
+                            )}
+
+                            <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>Status:</span>
+                            <select
+                              value={inq.status}
+                              onChange={(e) => handleUpdateInquiryStatus(inq, e.target.value)}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                border: '1px solid var(--line)',
+                                background: inq.status === 'Pending Review' ? '#FEF3C7' : inq.status === 'Contacted' ? '#DBEAFE' : inq.status === 'Confirmed' ? '#DCFCE7' : '#F3F4F6',
+                                color: inq.status === 'Pending Review' ? '#92400E' : inq.status === 'Contacted' ? '#1E40AF' : inq.status === 'Confirmed' ? '#166534' : '#4B5563',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <option value="Pending Review">Pending Review</option>
+                              <option value="Contacted">Contacted</option>
+                              <option value="Confirmed">Confirmed</option>
+                              <option value="Cancelled">Cancelled</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Linked Workshop Order Banner (if confirmed/converted) */}
+                        {Boolean(inq.convertedOrderId || inq.convertedOrderNumber) && (
+                          <div style={{
+                            background: '#F0FDF4',
+                            border: '1px solid #BBF7D0',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            marginBottom: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '10px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '1.25rem' }}>📦</span>
+                              <div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#166534' }}>
+                                  Linked Workshop Order: #{inq.convertedOrderNumber || inq.convertedOrderId?.orderNumber || 'SLM-ORDER'}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#15803D', marginTop: '2px' }}>
+                                  Order Status:{' '}
+                                  <strong style={{
+                                    display: 'inline-block',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    background: (inq.convertedOrderId?.status === 'Delivered') ? '#DCFCE7' : (inq.convertedOrderId?.status === 'Pending') ? '#FEF3C7' : '#DBEAFE',
+                                    color: (inq.convertedOrderId?.status === 'Delivered') ? '#166534' : (inq.convertedOrderId?.status === 'Pending') ? '#92400E' : '#1E40AF'
+                                  }}>
+                                    {inq.convertedOrderId?.status || 'Pending'}
+                                  </strong>
+                                  {inq.confirmedPrice ? (
+                                    <span style={{ marginLeft: '8px', fontWeight: 600 }}>
+                                      · Agreed Price: ৳{Number(inq.confirmedPrice).toLocaleString()}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-editorial-ghost"
+                              style={{
+                                fontSize: '0.8rem',
+                                padding: '6px 14px',
+                                borderColor: '#16A34A',
+                                color: '#166534',
+                                background: '#FFFFFF',
+                                cursor: 'pointer',
+                                fontWeight: 600
+                              }}
+                              onClick={() => {
+                                const targetOrderNumber = inq.convertedOrderNumber || inq.convertedOrderId?.orderNumber || '';
+                                setActiveTab('orders');
+                                if (targetOrderNumber) {
+                                  setOrderSearch(targetOrderNumber);
+                                  setOrderStatusFilter('all');
+                                }
+                              }}
+                            >
+                              Manage in Orders Tab ↗
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Customer & Spec Details Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                          {/* Customer Contact */}
+                          <div style={{ background: 'var(--surface)', padding: '12px 14px', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                              Customer Contact
+                            </div>
+                            <div style={{ fontWeight: 600, color: 'var(--walnut)', fontSize: '0.95rem' }}>
+                              {inq.customerName || inq.userId?.name || 'Customer'}
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '6px', alignItems: 'center' }}>
+                              <a
+                                href={`tel:${inq.phone}`}
+                                style={{ color: 'var(--terracotta)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none' }}
+                              >
+                                📞 {inq.phone}
+                              </a>
+                              {cleanPhone && (
+                                <a
+                                  href={`https://wa.me/${waNumber}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ background: '#25D366', color: '#fff', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', textDecoration: 'none', fontWeight: 600 }}
+                                >
+                                  WhatsApp
+                                </a>
+                              )}
+                            </div>
+                            {inq.email && (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginTop: '4px' }}>
+                                ✉️ {inq.email}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Dimensions & Sizing */}
+                          <div style={{ background: 'var(--surface)', padding: '12px 14px', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                              Required Dimensions
+                            </div>
+                            <div style={{ fontWeight: 700, color: 'var(--walnut)', fontSize: '1rem', letterSpacing: '0.02em' }}>
+                              {inq.dimensions?.height} (H) × {inq.dimensions?.width} (W) × {inq.dimensions?.depth} (D) {inq.dimensions?.unit || 'inch'}
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginTop: '4px' }}>
+                              Unit: {inq.dimensions?.unit === 'cm' ? 'Centimeters' : 'Inches'}
+                            </div>
+                          </div>
+
+                          {/* Materials & Finishes (if provided) */}
+                          {inq.materials && (inq.materials.woodType || inq.materials.finish || inq.materials.hardware) ? (
+                            <div style={{ background: 'var(--surface)', padding: '12px 14px', borderRadius: '8px' }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                                Materials & Hardware
+                              </div>
+                              {inq.materials.woodType && (
+                                <div style={{ fontSize: '0.88rem', color: 'var(--walnut)', fontWeight: 600 }}>
+                                  {inq.materials.woodType}
+                                </div>
+                              )}
+                              {inq.materials.finish && (
+                                <div style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginTop: '2px' }}>
+                                  Finish: {inq.materials.finish}
+                                </div>
+                              )}
+                              {inq.materials.hardware && (
+                                <div style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginTop: '2px' }}>
+                                  Hardware: {inq.materials.hardware}
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+
+
+                        {/* Customer Notes / Special Requests */}
+                        {inq.customDetails?.description && (
+                          <div style={{ marginBottom: '16px', background: '#FBFBFA', padding: '12px 14px', borderRadius: '8px', borderLeft: '3px solid var(--terracotta)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                              Customer Special Requests & Notes:
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                              {inq.customDetails.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Reference Images Gallery */}
+                        {inq.customDetails?.referenceImages && inq.customDetails.referenceImages.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                              Reference Inspiration Photos ({inq.customDetails.referenceImages.length}):
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                              {inq.customDetails.referenceImages.map((imgUrl, imgIdx) => (
+                                <div
+                                  key={imgIdx}
+                                  style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    borderRadius: '6px',
+                                    overflow: 'hidden',
+                                    border: '1px solid var(--line)',
+                                    cursor: 'pointer',
+                                    position: 'relative'
+                                  }}
+                                  onClick={() => setActiveImagePreview(imgUrl)}
+                                  title="Click to zoom reference photo"
+                                >
+                                  <img
+                                    src={imgUrl}
+                                    alt={`Ref photo ${imgIdx + 1}`}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Lightbox / Zoom for Reference Images */}
+            {activeImagePreview && (
+              <div
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(0,0,0,0.85)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 99999,
+                  padding: '24px'
+                }}
+                onClick={() => setActiveImagePreview(null)}
+              >
+                <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+                  <img
+                    src={activeImagePreview}
+                    alt="Full size reference photo"
+                    style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setActiveImagePreview(null)}
+                    style={{
+                      position: 'absolute',
+                      top: '-14px',
+                      right: '-14px',
+                      background: '#fff',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '32px',
+                      height: '32px',
+                      cursor: 'pointer',
+                      fontSize: '1.1rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tab Content 7: Store Settings (MFS Accounts, Promo Banner ON/OFF, Footer Info) */}
         {activeTab === 'settings' && (
+
           <div className="admin-tab-content">
             <div style={{ maxWidth: '720px', margin: '0 auto', background: 'var(--paper)', padding: '28px', borderRadius: '12px', border: '1px solid var(--line)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
               <div style={{ marginBottom: '24px' }}>
@@ -2442,6 +3120,432 @@ export function AdminPanelModal() {
                     style={{ padding: '12px 28px', fontSize: '0.95rem', fontWeight: '600' }}
                   >
                     {isSavingSettings ? 'Saving Settings...' : 'Save All Store Settings'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content: Architecture & Themes Section */}
+        {activeTab === 'themes' && (
+          <div className="admin-tab-content">
+            <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
+              {/* Header Box */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.4rem', fontFamily: 'Fraunces, serif', color: 'var(--walnut)' }}>
+                    Architecture & Themes Section
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--ink-soft)', marginTop: '4px' }}>
+                    Manage the curated editorial spaces, headlines, descriptions, and custom images featured in "Spaces Sculpted for Serenity" on the homepage.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={fetchThemeSection}
+                    disabled={isLoadingThemes || isSavingThemes}
+                    title="Reload latest from server"
+                  >
+                    {isLoadingThemes ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveThemeSection}
+                    disabled={isSavingThemes}
+                    style={{ minWidth: '140px' }}
+                  >
+                    {isSavingThemes ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="spinner" style={{ width: '14px', height: '14px' }}></span>
+                        Saving...
+                      </span>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Toast Notification Banner */}
+              {themeToast && (
+                <div
+                  style={{
+                    padding: '12px 18px',
+                    borderRadius: '8px',
+                    background: themeToast.type === 'error' ? '#FEE2E2' : '#ECFDF5',
+                    color: themeToast.type === 'error' ? '#991B1B' : '#065F46',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    marginBottom: '24px',
+                    border: `1px solid ${themeToast.type === 'error' ? '#FCA5A5' : '#A7F3D0'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <span>{themeToast.message}</span>
+                  <button
+                    type="button"
+                    onClick={() => setThemeToast(null)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'bold', fontSize: '1rem' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveThemeSection}>
+                {/* 1. Main Section Header Configuration */}
+                <div style={{ background: 'var(--paper)', padding: '24px', borderRadius: '12px', border: '1px solid var(--line)', marginBottom: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--walnut)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>Section Header & Editorial Headline</span>
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Eyebrow Label (Small Overline)
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={themeForm.eyebrow}
+                        onChange={(e) => setThemeForm({ ...themeForm, eyebrow: e.target.value })}
+                        placeholder="CURATED ARCHITECTURE & THEMES"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Main Heading
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={themeForm.heading}
+                        onChange={(e) => setThemeForm({ ...themeForm, heading: e.target.value })}
+                        placeholder="Spaces Sculpted for Serenity"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Subheading / Narrative Text
+                    </label>
+                    <textarea
+                      className="form-control"
+                      rows={2}
+                      value={themeForm.subheading}
+                      onChange={(e) => setThemeForm({ ...themeForm, subheading: e.target.value })}
+                      placeholder="We design with the belief that calm interiors create quiet minds..."
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Theme Cards Grid / Stack */}
+                <div style={{ marginBottom: '28px' }}>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--walnut)', marginBottom: '8px' }}>
+                    Curated Theme Cards ({themeForm.cards.length} Cards)
+                  </h4>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--ink-soft)', marginBottom: '20px' }}>
+                    Card 1 is displayed as the prominent wide hero card on the left. Cards 2 and 3 are displayed in the right column stack. Upload a custom photo or leave empty to use the default architectural illustration.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                    {themeForm.cards.map((card, idx) => {
+                      const isUploading = uploadingCardIndex === idx;
+                      const cardRole = idx === 0 ? 'Primary Feature (Wide)' : idx === 1 ? 'Split Feature A' : 'Split Feature B';
+
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            background: 'var(--paper)',
+                            border: '1px solid var(--line)',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                          }}
+                        >
+                          {/* Card Top Title Banner */}
+                          <div style={{ background: '#F5F4F0', padding: '12px 18px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--walnut)' }}>
+                              {cardRole}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', background: '#E7E5E4', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                              Card #{idx + 1}
+                            </span>
+                          </div>
+
+                          {/* Visual Media & Uploader Box */}
+                          <div style={{ padding: '18px', borderBottom: '1px solid var(--line)', background: '#FAFAF9' }}>
+                            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '8px', textTransform: 'uppercase' }}>
+                              Visual Graphic / Custom Image
+                            </label>
+
+                            {/* Aspect Ratio Preview Container */}
+                            <div
+                              style={{
+                                width: '100%',
+                                aspectRatio: '16 / 8',
+                                borderRadius: '6px',
+                                overflow: 'hidden',
+                                background: '#EAE5DC',
+                                position: 'relative',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid var(--line)',
+                                marginBottom: '12px'
+                              }}
+                            >
+                              {card.imageUrl ? (
+                                <img
+                                  src={card.imageUrl}
+                                  alt={card.title || `Theme ${idx + 1}`}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                              ) : (
+                                <div style={{ textAlign: 'center', padding: '12px', color: '#78716C' }}>
+                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ margin: '0 auto 6px', display: 'block', opacity: 0.7 }}>
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                    <polyline points="21 15 16 10 5 21"></polyline>
+                                  </svg>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                    Default Editorial Illustration
+                                  </span>
+                                  <span style={{ display: 'block', fontSize: '0.7rem', opacity: 0.8 }}>
+                                    (Active on storefront)
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Card Badge Overlay Preview */}
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: '8px',
+                                  left: '8px',
+                                  fontSize: '0.62rem',
+                                  fontWeight: 700,
+                                  background: 'rgba(255,255,255,0.92)',
+                                  padding: '2px 8px',
+                                  borderRadius: '2px',
+                                  border: '1px solid #E7E5E4',
+                                  letterSpacing: '0.08em'
+                                }}
+                              >
+                                {card.badgeText || `THEME 0${idx + 1}`}
+                              </div>
+                            </div>
+
+                            {/* Upload & Link Controls */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <label
+                                  className="btn btn-outline"
+                                  style={{
+                                    cursor: isUploading ? 'not-allowed' : 'pointer',
+                                    fontSize: '0.78rem',
+                                    padding: '6px 12px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    margin: 0
+                                  }}
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                  </svg>
+                                  <span>{isUploading ? 'Uploading...' : 'Upload Image'}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    disabled={isUploading}
+                                    onChange={(e) => {
+                                      if (e.target.files && e.target.files[0]) {
+                                        handleCardImageUpload(idx, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+
+                                {card.imageUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCardFieldChange(idx, 'imageUrl', '')}
+                                    className="btn btn-ghost"
+                                    style={{ fontSize: '0.76rem', color: '#B91C1C', padding: '6px 8px' }}
+                                    title="Clear image and revert to default illustration"
+                                  >
+                                    Revert to Default
+                                  </button>
+                                )}
+                              </div>
+
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ fontSize: '0.8rem', padding: '6px 10px' }}
+                                value={card.imageUrl}
+                                onChange={(e) => handleCardFieldChange(idx, 'imageUrl', e.target.value)}
+                                placeholder="Or paste image URL (https://...)"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Card Text Content Fields */}
+                          <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '4px' }}>
+                                  Badge Text
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{ fontSize: '0.85rem' }}
+                                  value={card.badgeText}
+                                  onChange={(e) => handleCardFieldChange(idx, 'badgeText', e.target.value)}
+                                  placeholder={`THEME 0${idx + 1}`}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '4px' }}>
+                                  Category Label
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{ fontSize: '0.85rem' }}
+                                  value={card.category}
+                                  onChange={(e) => handleCardFieldChange(idx, 'category', e.target.value)}
+                                  placeholder="e.g. LIVING & LOUNGE"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '4px' }}>
+                                Card Title
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ fontSize: '0.9rem', fontWeight: 600 }}
+                                value={card.title}
+                                onChange={(e) => handleCardFieldChange(idx, 'title', e.target.value)}
+                                placeholder="Card headline"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '4px' }}>
+                                Description Paragraph
+                              </label>
+                              <textarea
+                                className="form-control"
+                                rows={3}
+                                style={{ fontSize: '0.82rem', lineHeight: '1.4' }}
+                                value={card.description}
+                                onChange={(e) => handleCardFieldChange(idx, 'description', e.target.value)}
+                                placeholder="Describe the materials, craftsmanship, and serenity..."
+                              />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '4px' }}>
+                                  Button Text
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{ fontSize: '0.85rem' }}
+                                  value={card.buttonText}
+                                  onChange={(e) => handleCardFieldChange(idx, 'buttonText', e.target.value)}
+                                  placeholder="Explore Collection"
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)', marginBottom: '4px' }}>
+                                  Button Link / Route
+                                </label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  style={{ fontSize: '0.85rem' }}
+                                  value={card.buttonLink}
+                                  onChange={(e) => handleCardFieldChange(idx, 'buttonLink', e.target.value)}
+                                  placeholder="e.g. room:living-room or #material"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Quick Route Shortcut Chips */}
+                            <div style={{ marginTop: '2px' }}>
+                              <span style={{ fontSize: '0.68rem', color: '#78716C', display: 'block', marginBottom: '4px' }}>
+                                Quick route targets:
+                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {[
+                                  { label: 'Living Room', val: 'room:living-room' },
+                                  { label: 'Reading/Study', val: 'room:reading-room' },
+                                  { label: 'Bed Room', val: 'room:bed-room' },
+                                  { label: 'Dining', val: 'room:dining-room' },
+                                  { label: 'Materials', val: '#material' },
+                                  { label: 'Shop All', val: '/catalog' }
+                                ].map((target) => (
+                                  <button
+                                    key={target.val}
+                                    type="button"
+                                    onClick={() => handleCardFieldChange(idx, 'buttonLink', target.val)}
+                                    style={{
+                                      fontSize: '0.68rem',
+                                      padding: '2px 6px',
+                                      borderRadius: '3px',
+                                      border: '1px solid #D6D3D1',
+                                      background: card.buttonLink === target.val ? '#5A3720' : '#FFFFFF',
+                                      color: card.buttonLink === target.val ? '#FFFFFF' : '#44403C',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {target.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Bottom Sticky / Fixed Save Bar */}
+                <div style={{ background: 'var(--paper)', padding: '16px 24px', borderRadius: '12px', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
+                    Make sure to click Save Changes to publish updates to the storefront.
+                  </span>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSavingThemes}
+                    style={{ minWidth: '160px', padding: '10px 24px', fontWeight: 600 }}
+                  >
+                    {isSavingThemes ? 'Saving Changes...' : 'Save All Changes'}
                   </button>
                 </div>
               </form>
@@ -3469,6 +4573,137 @@ export function AdminPanelModal() {
                   </button>
                   <button type="submit" className="btn-admin-primary">
                     Create Poster
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Order Confirmation Modal */}
+        {confirmModalData && (
+          <div className="admin-subform-backdrop" style={{ zIndex: 100000 }}>
+            <div className="admin-subform-card" style={{ maxWidth: '540px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid var(--line)', paddingBottom: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Convert Bespoke Commission to Workshop Order
+                  </span>
+                  <h3 style={{ margin: '4px 0 0', fontFamily: 'Fraunces, serif', color: 'var(--walnut)', fontSize: '1.25rem' }}>
+                    Confirm Custom Order #{confirmModalData.inquiry?._id?.slice(-6)?.toUpperCase()}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfirmModalData(null)}
+                  style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--ink-soft)' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Inquiry Summary Box */}
+              <div style={{ background: '#F8F6F2', border: '1px solid #E5E1D8', borderRadius: '8px', padding: '12px 14px', marginBottom: '18px', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--ink-soft)' }}>Customer:</span>
+                  <strong>{confirmModalData.inquiry?.customerName || confirmModalData.inquiry?.userId?.name || 'Customer'} ({confirmModalData.inquiry?.phone})</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--ink-soft)' }}>Piece:</span>
+                  <strong>{confirmModalData.inquiry?.productType}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--ink-soft)' }}>Dimensions:</span>
+                  <strong>
+                    {confirmModalData.inquiry?.dimensions?.height} (H) × {confirmModalData.inquiry?.dimensions?.width} (W) × {confirmModalData.inquiry?.dimensions?.depth} (D) {confirmModalData.inquiry?.dimensions?.unit || 'inch'}
+                  </strong>
+                </div>
+              </div>
+
+              <form onSubmit={handleConfirmOrderSubmit}>
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label style={{ fontWeight: 600, color: 'var(--walnut)' }}>
+                    Agreed Custom Price / Quote (৳) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    step="1"
+                    autoFocus
+                    placeholder="e.g. 35000"
+                    value={confirmModalData.agreedPrice}
+                    onChange={(e) => setConfirmModalData({ ...confirmModalData, agreedPrice: e.target.value })}
+                    style={{ fontSize: '1.05rem', fontWeight: 600, borderColor: '#C9A876' }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: '4px', display: 'block' }}>
+                    Agreed price finalized with customer over phone call or WhatsApp consultation.
+                  </span>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label style={{ fontWeight: 600, color: 'var(--walnut)' }}>
+                    Customer Shipping / Delivery Address *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. House 12, Road 4, Sector 7, Uttara, Dhaka"
+                    value={confirmModalData.shippingAddress}
+                    onChange={(e) => setConfirmModalData({ ...confirmModalData, shippingAddress: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label style={{ fontWeight: 600, color: 'var(--walnut)' }}>
+                    Payment Method
+                  </label>
+                  <select
+                    value={confirmModalData.paymentMethod}
+                    onChange={(e) => setConfirmModalData({ ...confirmModalData, paymentMethod: e.target.value })}
+                  >
+                    <option value="Cash on Delivery (Custom Order)">Cash on Delivery (Custom Order)</option>
+                    <option value="bKash (Advance Received)">bKash (Advance Received)</option>
+                    <option value="Nagad (Advance Received)">Nagad (Advance Received)</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '18px' }}>
+                  <label style={{ fontWeight: 600, color: 'var(--walnut)' }}>
+                    Admin / Workshop Notes (Optional)
+                  </label>
+                  <textarea
+                    rows="2"
+                    placeholder="Specific wood shade, grain notes, or workshop deadline..."
+                    value={confirmModalData.notes}
+                    onChange={(e) => setConfirmModalData({ ...confirmModalData, notes: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '6px', padding: '10px 12px', fontSize: '0.8rem', color: '#92400E', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>ℹ️</span>
+                  <span>
+                    Confirming will automatically generate an Order with status <strong>Pending</strong>. You can then track and update its workshop status in the <strong>Orders</strong> tab.
+                  </span>
+                </div>
+
+                <div className="form-actions-right" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="btn-admin-cancel"
+                    disabled={confirmModalData.isSubmitting}
+                    onClick={() => setConfirmModalData(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-admin-primary"
+                    disabled={confirmModalData.isSubmitting}
+                    style={{ background: '#166534', borderColor: '#166534' }}
+                  >
+                    {confirmModalData.isSubmitting ? 'Converting...' : '✓ Confirm & Create Order (Pending)'}
                   </button>
                 </div>
               </form>

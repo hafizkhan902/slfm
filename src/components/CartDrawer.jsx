@@ -101,20 +101,12 @@ export function CartDrawer() {
                 </div>
                 <button
                   type="button"
+                  className="cart-remove-item-btn"
                   onClick={() => removeFromCart(product.id)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--ink-soft)',
-                    cursor: 'pointer',
-                    padding: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
                   title="Remove item"
+                  aria-label={`Remove ${product.name} from cart`}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
@@ -135,11 +127,14 @@ export function CartDrawer() {
             </p>
             <button
               type="button"
-              className="btn"
-              style={{ width: '100%', textAlign: 'center' }}
+              className="cart-checkout-btn"
               onClick={handleCheckoutClick}
             >
-              Proceed to Checkout
+              <span>Proceed to Checkout</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
             </button>
           </div>
         )}

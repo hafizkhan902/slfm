@@ -43,6 +43,7 @@ export function AuthProvider({ children }) {
     id: o.orderNumber || o._id || o.id,
     mongoId: o._id,
     userId: o.userId || 'guest',
+    customInquiryId: o.customInquiryId || null,
     customerName: o.customerName,
     phone: o.phone,
     address: o.shippingAddress || o.address,
@@ -50,16 +51,22 @@ export function AuthProvider({ children }) {
     trxId: o.trxId || '',
     createdAt: o.createdAt || new Date().toISOString(),
     status: o.status || 'Placed',
-    items: (o.items || []).map((item) => ({
-      product: item.product || {
-        id: item.id || 'prod-item',
-        name: item.name || 'Furniture Item',
-        price: item.price || 0,
-        iconType: item.iconType || 'table',
-        bg: item.bg || 'var(--surface)'
-      },
-      quantity: item.quantity || 1
-    })),
+    items: (o.items || []).map((item) => {
+      const p = item.product || {};
+      return {
+        product: {
+          id: p.id || item.id || 'prod-item',
+          name: p.name || item.name || 'Furniture Item',
+          price: p.price ?? item.price ?? 0,
+          iconType: p.iconType || item.iconType || 'table',
+          bg: p.bg || item.bg || 'var(--surface)',
+          image: p.image || item.image || '',
+          dimensions: p.dimensions || item.dimensions || '',
+          isCustom: !!(p.isCustom || item.isCustom)
+        },
+        quantity: item.quantity || 1
+      };
+    }),
     totalAmount: o.totalAmount
   });
 
@@ -451,7 +458,8 @@ export function AuthProvider({ children }) {
         isOrderTrackerOpen,
         setIsOrderTrackerOpen,
         isProfileModalOpen,
-        setIsProfileModalOpen
+        setIsProfileModalOpen,
+        fetchLatestOrders
       }}
     >
       {children}

@@ -197,12 +197,12 @@ export const updateOrderStatus = async (req, res, next) => {
     const param = String(req.params.orderNumber || req.params.id || '').trim();
     console.log(`[Server orderController] 🚚 Order status update request received for orderParam: "${param}", target status: "${status}"`);
 
-    const ALLOWED_STATUSES = ['Placed', 'Confirmed', 'Shipped', 'Delivered'];
+    const ALLOWED_STATUSES = ['Pending', 'Placed', 'Confirmed', 'Shipped', 'Delivered'];
     const matchedStatus = ALLOWED_STATUSES.find(s => s.toLowerCase() === String(status || '').trim().toLowerCase());
 
     if (!matchedStatus) {
       console.warn(`[Server orderController] ⚠️ Invalid order status transition: ${status}`);
-      return res.status(400).json({ error: 'Invalid order status transition. Must be Placed, Confirmed, Shipped, or Delivered' });
+      return res.status(400).json({ error: 'Invalid order status transition. Must be Pending, Placed, Confirmed, Shipped, or Delivered' });
     }
 
     const digitsOnly = param.replace(/[^0-9]/g, '');

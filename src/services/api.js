@@ -204,5 +204,69 @@ export const api = {
     request('/delivery/admin/areas/bulk-delete', {
       method: 'DELETE',
       body: JSON.stringify({ ids })
-    })
+    }),
+
+  // Custom Furniture Inquiry & Reference Upload
+  createCustomInquiry: async (formData) => {
+    const token = localStorage.getItem('shahlajuk_token');
+    const response = await fetch(`${API_BASE_URL}/inquiries/custom`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Failed to submit custom inquiry');
+    }
+    return data;
+  },
+  getAdminInquiries: (queryString = '') =>
+    request(`/inquiries${queryString ? `?${queryString}` : ''}`),
+  getMyInquiries: () => request('/inquiries/my'),
+  getInquiryById: (id) => request(`/inquiries/${id}`),
+  updateInquiryStatus: (id, status, extraData = {}) => {
+    const payload = typeof extraData === 'string'
+      ? { status, adminNotes: extraData }
+      : { status, ...extraData };
+    return request(`/inquiries/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+  },
+  confirmInquiryToOrder: (id, data = {}) =>
+    request(`/inquiries/${id}/confirm-order`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+  deleteInquiry: (id) =>
+    request(`/inquiries/${id}`, {
+      method: 'DELETE'
+    }),
+
+  // Curated Architecture & Themes Section
+  getThemeSection: () => request('/theme-section'),
+  updateThemeSection: (themeData) =>
+    request('/theme-section', {
+      method: 'PUT',
+      body: JSON.stringify(themeData)
+    }),
+  updateThemeSectionMultipart: async (formData) => {
+    const token = localStorage.getItem('shahlajuk_token');
+    const response = await fetch(`${API_BASE_URL}/theme-section`, {
+      method: 'PUT',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Failed to update theme section');
+    }
+    return data;
+  }
 };

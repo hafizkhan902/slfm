@@ -6,7 +6,10 @@ const orderItemSchema = new mongoose.Schema({
     name: { type: String, default: '' },
     price: { type: Number, default: 0 },
     iconType: { type: String, default: 'table' },
-    bg: { type: String, default: 'var(--surface)' }
+    bg: { type: String, default: 'var(--surface)' },
+    image: { type: String, default: '' },
+    dimensions: { type: String, default: '' },
+    isCustom: { type: Boolean, default: false }
   },
   quantity: {
     type: Number,
@@ -26,6 +29,11 @@ const orderSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      default: null
+    },
+    customInquiryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CustomInquiry',
       default: null
     },
     customerName: {
@@ -70,12 +78,13 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['Placed', 'Confirmed', 'Shipped', 'Delivered'],
+      enum: ['Pending', 'Placed', 'Confirmed', 'Shipped', 'Delivered'],
       default: 'Placed'
     }
   },
   { timestamps: true }
 );
+
 
 // High-Performance Query Indexes
 orderSchema.index({ userId: 1, createdAt: -1 });

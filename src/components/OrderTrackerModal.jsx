@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import { ProductIcon } from './ProductIcon';
 import { validatePhone } from '../utils/validation';
 import { api } from '../services/api';
@@ -14,8 +15,11 @@ function OrderCard({ order, defaultExpanded = false }) {
     : firstItemName;
 
   const renderStatusTimeline = (rawStatus) => {
-    const steps = ['Placed', 'Confirmed', 'Shipped', 'Delivered'];
     const normalized = String(rawStatus || '').trim().toLowerCase();
+    const isPending = normalized === 'pending';
+    const steps = isPending
+      ? ['Pending', 'Confirmed', 'Shipped', 'Delivered']
+      : ['Placed', 'Confirmed', 'Shipped', 'Delivered'];
     const statusIndex = steps.findIndex(s => s.toLowerCase() === normalized);
     const validIndex = statusIndex !== -1 ? statusIndex : 0;
 
@@ -112,23 +116,13 @@ function OrderCard({ order, defaultExpanded = false }) {
                   const targetId = order.orderNumber || order.id || order._id;
                   window.open(api.getOrderReceiptUrl(targetId), '_blank');
                 }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'var(--walnut, #4A2C19)',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
-                  transition: 'background 0.2s ease, transform 0.2s ease'
-                }}
               >
-                ️ Print Receipt
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                  <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                <span>Print Receipt</span>
               </button>
             </div>
           </div>
@@ -148,6 +142,7 @@ export function OrderTrackerModal() {
     setIsAuthModalOpen,
     setAuthModalTab
   } = useAuth();
+  const { setIsCustomInquiryOpen } = useCart();
 
   const [activeTab, setActiveTab] = useState('my-orders'); // 'my-orders' | 'track-by-id'
   const [searchId, setSearchId] = useState('');
@@ -191,14 +186,14 @@ export function OrderTrackerModal() {
         </button>
 
         <div className="tracker-modal-head">
-          <h2 className="tracker-modal-title">Order History</h2>
+          <h2 className="tracker-modal-title">Order History & Tracking</h2>
           <p className="tracker-modal-sub">
             View your order history & track delivery progress.
           </p>
         </div>
 
         {/* Minimal Pill Segmented Tab Bar */}
-        <div className="auth-tab-pill-bar" style={{ marginTop: '16px', marginBottom: '20px' }}>
+        <div className="auth-tab-pill-bar" style={{ marginTop: '16px', marginBottom: '16px' }}>
           <button
             type="button"
             className={`auth-tab-pill ${activeTab === 'my-orders' ? 'active' : ''}`}
@@ -212,6 +207,40 @@ export function OrderTrackerModal() {
             onClick={() => setActiveTab('track-by-id')}
           >
             Track by Order ID
+          </button>
+        </div>
+
+        {/* Quick Custom Order Prompt */}
+        <div className="tracker-custom-order-banner" style={{
+          background: 'var(--stone-light, #F5F4F0)',
+          border: '1px solid var(--stone-divider, #E7E5E4)',
+          borderRadius: '4px',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '0.95rem' }}>📐</span>
+            <span style={{ fontSize: '0.82rem', color: '#44403C' }}>
+              Looking for bespoke sizing or custom furniture?
+            </span>
+          </div>
+          <button
+            type="button"
+            className="tracker-bespoke-link-btn"
+            onClick={() => {
+              handleClose();
+              setIsCustomInquiryOpen(true);
+            }}
+          >
+            <span>Request Custom Build</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
           </button>
         </div>
 

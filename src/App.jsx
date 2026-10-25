@@ -4,13 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductProvider } from './context/ProductContext';
 import { useCart } from './context/CartContext';
 import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { Ticker } from './components/Ticker';
-import { PromoBannerSection } from './components/PromoBannerSection';
-import { ShopAll } from './components/ShopAll';
-import { ShopByRoom } from './components/ShopByRoom';
-import { MaterialSection } from './components/MaterialSection';
-import { FeaturedProducts } from './components/FeaturedProducts';
+import { Home } from './components/Home';
+import { Shop } from './components/Shop';
 import { ProductDetailPage } from './components/ProductDetailPage';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
@@ -21,8 +16,45 @@ const AuthModal = lazy(() => import('./components/AuthModal').then(m => ({ defau
 const OrderTrackerModal = lazy(() => import('./components/OrderTrackerModal').then(m => ({ default: m.OrderTrackerModal })));
 const UserProfileModal = lazy(() => import('./components/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 const AdminPanelModal = lazy(() => import('./components/AdminPanelModal'));
+const CustomInquiryModal = lazy(() => import('./components/CustomInquiryModal').then(m => ({ default: m.CustomInquiryModal })));
 
 import { api } from './services/api';
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Captured Error in ErrorBoundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', textAlign: 'center', background: '#FAFAF9', color: '#1C1917' }}>
+          <h2 style={{ fontFamily: 'serif', fontSize: '1.8rem', marginBottom: '12px' }}>Something went wrong loading this view.</h2>
+          <p style={{ color: '#78716C', maxWidth: '480px', marginBottom: '24px' }}>
+            We encountered a minor display issue. Click below to refresh the page.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => window.location.reload()}
+          >
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function ToastContainer() {
   const { toastMessage } = useCart();
@@ -81,44 +113,37 @@ function MainContent() {
     <>
       <Navbar onHomeClick={handleHomeClick} onCatalogClick={handleOpenCatalog} />
 
-      {selectedProduct ? (
-        <ProductDetailPage
-          product={selectedProduct}
-          onBack={() => setSelectedProduct(null)}
-          onSelectProduct={handleSelectProduct}
-        />
-      ) : currentPage === 'catalog' ? (
-        <ShopAll
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-          selectedRoom={selectedRoom}
-          setSelectedRoom={setSelectedRoom}
-          onSelectProduct={handleSelectProduct}
-          isFullPage={true}
-          onBackToHome={handleHomeClick}
-        />
-      ) : (
-        <>
-          <Hero />
-          <Ticker />
-          <ShopAll
+      <ErrorBoundary>
+        {selectedProduct ? (
+          <ProductDetailPage
+            product={selectedProduct}
+            onBack={() => setSelectedProduct(null)}
+            onSelectProduct={handleSelectProduct}
+          />
+        ) : currentPage === 'catalog' ? (
+          <Shop
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
             selectedRoom={selectedRoom}
             setSelectedRoom={setSelectedRoom}
             onSelectProduct={handleSelectProduct}
-            isFullPage={false}
-            onOpenFullCatalog={handleOpenCatalog}
+            onBackToHome={handleHomeClick}
           />
-          <PromoBannerSection />
-          <ShopByRoom
-            selectedRoom={selectedRoom}
-            setSelectedRoom={setSelectedRoom}
+        ) : (
+          <Home
+            onCatalogClick={handleOpenCatalog}
+            onSelectProduct={handleSelectProduct}
+            onSelectRoom={(roomId) => {
+              setSelectedRoom(roomId);
+              handleOpenCatalog();
+            }}
+            onSelectCategory={(catId) => {
+              setSelectedCategory(catId);
+              handleOpenCatalog();
+            }}
           />
-          <MaterialSection />
-          <FeaturedProducts onSelectProduct={handleSelectProduct} />
-        </>
-      )}
+        )}
+      </ErrorBoundary>
 
       <Footer />
       <CartDrawer />
@@ -128,6 +153,7 @@ function MainContent() {
         <OrderTrackerModal />
         <UserProfileModal />
         <AdminPanelModal />
+        <CustomInquiryModal />
       </Suspense>
       <ToastContainer />
     </>

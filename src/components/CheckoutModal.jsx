@@ -3,6 +3,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { validatePhone, validateName } from '../utils/validation';
 import { api } from '../services/api';
+import { ProductIcon } from './ProductIcon';
 
 export function CheckoutModal() {
   const { isCheckoutOpen, setIsCheckoutOpen, cartItems, subtotal, clearCart, showToast } = useCart();
@@ -239,414 +240,366 @@ export function CheckoutModal() {
 
   return (
     <div className="modal-backdrop open" onClick={handleClose}>
-      <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="modal-close-icon"
-          onClick={handleClose}
-          aria-label="Close modal"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+      <div className="checkout-modal-card" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
+        <div className="checkout-header-area">
+          <div className="checkout-title-row">
+            <div>
+              <h2 className="checkout-heading">
+                Checkout <span className="checkout-heading-amp">&amp;</span> delivery
+              </h2>
+              <p className="checkout-subheading">
+                Complete your order details for ShahLajuk Furniture Mart.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="checkout-close-btn"
+              onClick={handleClose}
+              aria-label="Close checkout"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
 
-        <div className="modal-content">
+        <div className="checkout-scroll-body">
           {orderConfirmed ? (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ textAlign: 'center', padding: '24px 0 12px' }}>
               <div
                 style={{
-                  width: '60px',
-                  height: '60px',
-                  background: 'var(--sage-light)',
-                  color: 'var(--sage)',
+                  width: '56px',
+                  height: '56px',
+                  background: 'rgba(74, 93, 79, 0.12)',
+                  color: '#4A5D4F',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.8rem',
+                  fontSize: '1.6rem',
                   margin: '0 auto 16px'
                 }}
               >
-                
+                ✓
               </div>
-              <h2 style={{ fontSize: '1.8rem' }}>Order Placed Successfully!</h2>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: '#1C1917', margin: 0 }}>
+                Order Placed Successfully!
+              </h2>
 
               <div
                 style={{
                   margin: '16px auto',
-                  padding: '12px 20px',
-                  background: 'var(--bg)',
-                  border: '1px solid var(--line)',
-                  borderRadius: '6px',
+                  padding: '14px 20px',
+                  background: '#FAF8F5',
+                  border: '1px solid #E5E0D8',
+                  borderRadius: '10px',
                   maxWidth: '340px'
                 }}
               >
-                <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--ink-soft)' }}>
-                  Your Order Tracking ID:
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#78716C', fontWeight: 600 }}>
+                  Order Tracking ID
                 </span>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--walnut)', fontFamily: 'Fraunces, serif' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3A2415', fontFamily: 'Fraunces, serif', marginTop: '2px' }}>
                   {placedOrderId}
                 </div>
                 {formData.trxId && (
-                  <div style={{ fontSize: '0.84rem', marginTop: '4px', color: 'var(--ink-soft)' }}>
-                    TrxID: <strong style={{ color: 'var(--ink)' }}>{formData.trxId}</strong>
+                  <div style={{ fontSize: '0.82rem', marginTop: '6px', color: '#78716C' }}>
+                    TrxID: <strong style={{ color: '#1C1917' }}>{formData.trxId}</strong>
                   </div>
                 )}
               </div>
 
-              <p style={{ marginTop: '12px', color: 'var(--ink-soft)', fontSize: '0.92rem' }}>
-                Thank you for shopping with <strong>ShahLajuk Furniture Mart</strong>. Our representative will contact you at <strong>{formData.phone}</strong> to confirm your delivery.
+              <p style={{ marginTop: '12px', color: '#78716C', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                Thank you for choosing <strong>ShahLajuk Furniture Mart</strong>. Our representative will contact you at <strong>{formData.phone}</strong> to confirm dispatch.
               </p>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px', flexWrap: 'wrap' }}>
-                <button type="button" className="btn" onClick={handleTrackDirectly}>
-                  Track Order Now 
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '24px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="checkout-place-btn"
+                  onClick={handleTrackDirectly}
+                  style={{ width: 'auto', padding: '12px 24px', fontSize: '0.92rem' }}
+                >
+                  Track Order Now
                 </button>
-                <button type="button" className="btn-cart" onClick={handleClose} style={{ minHeight: '46px' }}>
+                <button
+                  type="button"
+                  className="checkout-secondary-btn"
+                  onClick={handleClose}
+                >
                   Continue Shopping
                 </button>
               </div>
             </div>
           ) : (
             <div>
-              <h2>Checkout & Delivery</h2>
-              <p style={{ fontSize: '0.9rem', color: 'var(--ink-soft)', marginTop: '4px' }}>
-                Complete your order details below for ShahLajuk Furniture Mart.
-              </p>
-
-              {/* Order Summary & Pricing Calculation */}
-              <div
-                style={{
-                  margin: '16px 0',
-                  padding: '14px 16px',
-                  background: 'var(--bg)',
-                  border: '1px solid var(--line)',
-                  borderRadius: '6px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--ink-soft)' }}>Order Items ({cartItems.reduce((sum, item) => sum + item.quantity, 0)}):</span>
-                  <span style={{ fontWeight: 600 }}>৳{subtotal.toLocaleString()}</span>
+              {/* TOP SECTION: PRODUCT LIST & TOTAL PRICING */}
+              <div className="checkout-top-summary">
+                {/* Product List */}
+                <div className="checkout-products-list">
+                  {cartItems.map(({ product, quantity }) => {
+                    const lineTotal = product.price * quantity;
+                    return (
+                      <div key={product.id} className="checkout-product-row">
+                        <div className="checkout-product-thumb">
+                          <ProductIcon type={product.iconType} image={product.image} alt={product.name} />
+                        </div>
+                        <div className="checkout-product-details">
+                          <div className="checkout-product-name">{product.name}</div>
+                          <div className="checkout-product-sub">
+                            <span>{quantity}x</span>
+                            <span> · </span>
+                            <span>৳{product.price.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <div className="checkout-product-price">
+                          ৳{lineTotal.toLocaleString()}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--ink-soft)' }}>
-                    Delivery Fee {selectedAreaDetails ? `(${selectedAreaDetails.name})` : ''}:
-                  </span>
-                  <span style={{ fontWeight: 600, color: selectedAreaDetails ? 'var(--walnut)' : 'var(--ink-soft)' }}>
-                    {selectedAreaDetails ? `৳${deliveryFee.toLocaleString()}` : 'Select area below'}
-                  </span>
-                </div>
+                {/* Delivery Fee & Grand Total Rows */}
+                <div className="checkout-fee-total-block">
+                  <div className="checkout-line-row checkout-delivery-row">
+                    <span>Delivery fee</span>
+                    <span className={selectedAreaDetails ? 'checkout-delivery-val selected' : 'checkout-delivery-val unselected'}>
+                      {selectedAreaDetails ? (
+                        <>৳{deliveryFee.toLocaleString()} ({selectedAreaDetails.name})</>
+                      ) : (
+                        'Choose your area'
+                      )}
+                    </span>
+                  </div>
 
-                <div style={{ height: '1px', background: 'var(--line)', margin: '10px 0' }} />
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}>Total Amount:</span>
-                  <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--walnut)' }}>
-                    ৳{grandTotal.toLocaleString()}
-                  </span>
+                  <div className="checkout-line-row checkout-total-row">
+                    <span className="checkout-total-label">Total</span>
+                    <span className="checkout-total-amount">
+                      ৳{grandTotal.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <form className="checkout-form" onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label htmlFor="name">Full Name *</label>
-                  <div className="input-icon-wrapper">
-                    <span className="input-icon">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                    </span>
-                    <input
-                      id="name"
-                      type="text"
-                      required
-                      placeholder="e.g. Tanvir Hasan"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
+              {/* CHECKOUT FORM */}
+              <form onSubmit={handleSubmit}>
+                {/* Full Name */}
+                <div className="checkout-form-field">
+                  <label htmlFor="checkout-name" className="checkout-label">Full name</label>
+                  <input
+                    id="checkout-name"
+                    type="text"
+                    required
+                    placeholder="e.g. Admin Lajuk"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="checkout-input-styled"
+                  />
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="phone">Phone Number *</label>
-                  <div className="input-icon-wrapper">
-                    <span className="input-icon">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                    </span>
-                    <input
-                      id="phone"
-                      type="tel"
-                      required
-                      placeholder="e.g. 01700000000"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    />
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: '#777', marginTop: '4px', display: 'block' }}>
-                     Must be 11 digits starting with 01
-                  </span>
+                {/* Phone Number */}
+                <div className="checkout-form-field">
+                  <label htmlFor="checkout-phone" className="checkout-label">Phone number</label>
+                  <input
+                    id="checkout-phone"
+                    type="tel"
+                    required
+                    placeholder="+8801700000000"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="checkout-input-styled"
+                  />
                 </div>
 
-                {/* Cascading Location Hierarchy (BD-GeoAPI + Admin Configured Areas) */}
-                <div style={{ marginTop: '10px', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '8px' }}>
-                    Delivery Area (Bangladesh) *
-                  </label>
-
+                {/* Cascading Location Hierarchy (Division | District | Area) */}
+                <div className="checkout-form-field">
                   {isLoadingGeo ? (
-                    <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: '6px', fontSize: '0.88rem', color: 'var(--ink-soft)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="spinner" style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid var(--walnut)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
-                      Loading available delivery areas...
+                    <div style={{ padding: '10px', background: '#FAF8F5', borderRadius: '8px', fontSize: '0.85rem', color: '#78716C' }}>
+                      Loading delivery locations...
                     </div>
                   ) : geoError ? (
-                    <div style={{ padding: '10px 12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '6px', color: '#991B1B', fontSize: '0.85rem' }}>
-                      ⚠️ {geoError}
-                    </div>
-                  ) : deliveryDivisions.length === 0 ? (
-                    <div style={{ padding: '12px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
-                      ℹ️ Delivery areas are being configured by store management. Please enter your full delivery address below.
+                    <div style={{ padding: '10px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#991B1B', fontSize: '0.84rem' }}>
+                      {geoError}
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
-                      {/* 1. Division Dropdown */}
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label htmlFor="geo-division" style={{ fontSize: '0.74rem' }}>Division *</label>
-                        <select
-                          id="geo-division"
-                          value={selectedDivisionId}
-                          onChange={handleDivisionChange}
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '9px 10px',
-                            background: 'var(--paper)',
-                            border: '1px solid var(--line)',
-                            borderRadius: '5px',
-                            fontSize: '0.88rem',
-                            color: 'var(--ink)'
-                          }}
-                        >
-                          <option value="">Select Division</option>
-                          {deliveryDivisions.map((div) => (
-                            <option key={div.id} value={div.id}>
-                              {div.name} {div.nameBn ? `(${div.nameBn})` : ''}
-                            </option>
-                          ))}
-                        </select>
+                    <div className="checkout-geo-3col">
+                      {/* Division */}
+                      <div>
+                        <label htmlFor="geo-division" className="checkout-label">Division</label>
+                        <div className="checkout-select-box">
+                          <select
+                            id="geo-division"
+                            value={selectedDivisionId}
+                            onChange={handleDivisionChange}
+                            required
+                            className="checkout-select-styled"
+                          >
+                            <option value="">Select</option>
+                            {deliveryDivisions.map((div) => (
+                              <option key={div.id} value={div.id}>
+                                {div.name}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="checkout-select-arrow" aria-hidden="true">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          </span>
+                        </div>
                       </div>
 
-                      {/* 2. District Dropdown */}
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label htmlFor="geo-district" style={{ fontSize: '0.74rem' }}>District *</label>
-                        <select
-                          id="geo-district"
-                          value={selectedDistrictId}
-                          onChange={handleDistrictChange}
-                          disabled={!selectedDivisionId}
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '9px 10px',
-                            background: selectedDivisionId ? 'var(--paper)' : 'rgba(0,0,0,0.03)',
-                            border: '1px solid var(--line)',
-                            borderRadius: '5px',
-                            fontSize: '0.88rem',
-                            color: selectedDivisionId ? 'var(--ink)' : 'var(--ink-soft)',
-                            cursor: selectedDivisionId ? 'pointer' : 'not-allowed'
-                          }}
-                        >
-                          <option value="">
-                            {selectedDivisionId ? 'Select District' : 'Choose Division first'}
-                          </option>
-                          {availableDistricts.map((dist) => (
-                            <option key={dist.id} value={dist.id}>
-                              {dist.name} {dist.nameBn ? `(${dist.nameBn})` : ''}
-                            </option>
-                          ))}
-                        </select>
+                      {/* District */}
+                      <div>
+                        <label htmlFor="geo-district" className="checkout-label">District</label>
+                        <div className="checkout-select-box">
+                          <select
+                            id="geo-district"
+                            value={selectedDistrictId}
+                            onChange={handleDistrictChange}
+                            disabled={!selectedDivisionId}
+                            required
+                            className="checkout-select-styled"
+                          >
+                            <option value="">Select</option>
+                            {availableDistricts.map((dist) => (
+                              <option key={dist.id} value={dist.id}>
+                                {dist.name}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="checkout-select-arrow" aria-hidden="true">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          </span>
+                        </div>
                       </div>
 
-                      {/* 3. Upazila Dropdown */}
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label htmlFor="geo-upazila" style={{ fontSize: '0.74rem' }}>Upazila / Area *</label>
-                        <select
-                          id="geo-upazila"
-                          value={selectedUpazilaId}
-                          onChange={handleUpazilaChange}
-                          disabled={!selectedDistrictId}
-                          required
-                          style={{
-                            width: '100%',
-                            padding: '9px 10px',
-                            background: selectedDistrictId ? 'var(--paper)' : 'rgba(0,0,0,0.03)',
-                            border: '1px solid var(--line)',
-                            borderRadius: '5px',
-                            fontSize: '0.88rem',
-                            color: selectedDistrictId ? 'var(--ink)' : 'var(--ink-soft)',
-                            cursor: selectedDistrictId ? 'pointer' : 'not-allowed'
-                          }}
-                        >
-                          <option value="">
-                            {selectedDistrictId ? 'Select Upazila' : 'Choose District first'}
-                          </option>
-                          {availableUpazilas.map((upz) => (
-                            <option key={upz.id} value={upz.id}>
-                              {upz.name} {upz.nameBn ? `(${upz.nameBn})` : ''} — ৳{upz.deliveryFee}
-                            </option>
-                          ))}
-                        </select>
+                      {/* Area (Upazila) */}
+                      <div>
+                        <label htmlFor="geo-upazila" className="checkout-label">Area</label>
+                        <div className="checkout-select-box">
+                          <select
+                            id="geo-upazila"
+                            value={selectedUpazilaId}
+                            onChange={handleUpazilaChange}
+                            disabled={!selectedDistrictId}
+                            required
+                            className="checkout-select-styled"
+                          >
+                            <option value="">Select</option>
+                            {availableUpazilas.map((upz) => (
+                              <option key={upz.id} value={upz.id}>
+                                {upz.name} (৳{upz.deliveryFee})
+                              </option>
+                            ))}
+                          </select>
+                          <span className="checkout-select-arrow" aria-hidden="true">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Active Area Confirmation Pill */}
-                  {selectedAreaDetails && (
-                    <div
-                      style={{
-                        marginTop: '8px',
-                        padding: '8px 12px',
-                        background: 'rgba(201, 168, 118, 0.15)',
-                        border: '1px solid rgba(201, 168, 118, 0.4)',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: '0.84rem'
-                      }}
-                    >
-                      <span style={{ color: 'var(--walnut)', fontWeight: 600 }}>
-                        🚚 Delivery to {selectedAreaDetails.name}: <strong>৳{deliveryFee}</strong>
-                      </span>
-                      <span style={{ color: 'var(--ink-soft)', fontSize: '0.78rem' }}>
-                        Est. {selectedAreaDetails.estimatedDays || '2-4 business days'}
-                      </span>
                     </div>
                   )}
                 </div>
 
-                {/* Detailed Street Address */}
-                <div className="form-group">
-                  <label htmlFor="address">Detailed Street Address (Holding, Road, Village, Landmark) *</label>
-                  <div className="input-icon-wrapper address-wrapper">
-                    <span className="input-icon address-icon">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                    </span>
-                    <textarea
-                      id="address"
-                      rows="2"
-                      required
-                      placeholder="e.g. House #12, Road #4, Porabari Road, near CNG Station..."
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="profile-textarea"
-                    ></textarea>
-                  </div>
+                {/* Street Address */}
+                <div className="checkout-form-field">
+                  <label htmlFor="checkout-address" className="checkout-label">Street address</label>
+                  <textarea
+                    id="checkout-address"
+                    rows="2"
+                    required
+                    placeholder="SLFM"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="checkout-textarea-styled"
+                  ></textarea>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="payment">Payment Options</label>
-                  <select
-                    id="payment"
-                    value={formData.paymentMethod}
-                    onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    style={{
-                      width: '100%',
-                      padding: '11px 14px',
-                      background: 'rgba(239, 234, 225, 0.55)',
-                      border: 'none',
-                      borderBottom: '2px solid var(--line)',
-                      borderRadius: '6px 6px 2px 2px',
-                      fontSize: '0.92rem',
-                      color: 'var(--ink)',
-                      fontWeight: 500
-                    }}
+                {/* Payment Methods (3 tabs) */}
+                <div className="checkout-payment-row">
+                  <button
+                    type="button"
+                    className={`checkout-pay-tab ${formData.paymentMethod === 'Cash on Delivery (COD)' ? 'active' : ''}`}
+                    onClick={() => setFormData({ ...formData, paymentMethod: 'Cash on Delivery (COD)' })}
                   >
-                    <option value="Cash on Delivery (COD)">Cash on Delivery (COD)</option>
-                    <option value="bKash Mobile Banking">bKash Mobile Banking</option>
-                    <option value="Nagad Mobile Banking">Nagad Mobile Banking</option>
-                    <option value="Credit / Debit Card">Credit / Debit Card</option>
-                  </select>
+                    Cash on delivery
+                  </button>
+                  <button
+                    type="button"
+                    className={`checkout-pay-tab ${formData.paymentMethod === 'bKash Mobile Banking' ? 'active' : ''}`}
+                    onClick={() => setFormData({ ...formData, paymentMethod: 'bKash Mobile Banking' })}
+                  >
+                    bKash
+                  </button>
+                  <button
+                    type="button"
+                    className={`checkout-pay-tab ${formData.paymentMethod === 'Nagad Mobile Banking' ? 'active' : ''}`}
+                    onClick={() => setFormData({ ...formData, paymentMethod: 'Nagad Mobile Banking' })}
+                  >
+                    Nagad
+                  </button>
                 </div>
 
-                {/* COD Advance Shipping Charge Notice */}
+                {/* COD Advance Notice Box */}
                 {isCOD && (
-                  <div className="cod-warning-card">
-                    <div className="cod-warning-head">
-                      <span className="cod-warning-icon">⚠️</span>
-                      <strong>Advance Delivery Charge Notice</strong>
-                    </div>
-                    <p className="cod-warning-text">
-                      For <strong>Cash on Delivery (COD)</strong> orders, paying the shipping/delivery charge (<strong>৳{selectedAreaDetails ? deliveryFee : 120}</strong>) in advance is required to confirm order dispatch. Our representative will contact you at <strong>{formData.phone || 'your phone number'}</strong> to assist with the advance delivery fee.
-                    </p>
+                  <div className="checkout-cod-banner">
+                    Pay the ৳{selectedAreaDetails ? deliveryFee : 120} delivery charge in advance to confirm dispatch. We'll call{' '}
+                    <strong>{formData.phone || '+8801700000000'}</strong> to help.
                   </div>
                 )}
 
-                {/* Mobile Banking Payment Instructions & TrxID Input */}
+                {/* MFS Payment Instructions & TrxID Input */}
                 {isMobileBanking && (() => {
                   const activeMfsNumber = isbKash ? mfsSettings.bkashNumber : mfsSettings.nagadNumber;
                   const providerName = isbKash ? 'bKash' : 'Nagad';
 
                   return (
-                    <div className={`mbk-card ${isbKash ? 'bkash-card' : 'nagad-card'}`}>
-                      <div className="mbk-head">
-                        <span className="mbk-provider-title">
-                          {isbKash ? '⚡ bKash Personal / Merchant' : '⚡ Nagad Personal / Merchant'}
+                    <div className="checkout-mfs-details-card">
+                      <div className="checkout-mfs-top-row">
+                        <span style={{ fontWeight: 600, color: '#1C1917', fontSize: '0.88rem' }}>
+                          ⚡ {providerName} Send Money
                         </span>
                         <button
                           type="button"
-                          className="mbk-copy-btn"
+                          className="checkout-mfs-number-btn"
                           onClick={() => handleCopyNumber(activeMfsNumber, providerName)}
                         >
                           📋 {activeMfsNumber} (Tap to Copy)
                         </button>
                       </div>
 
-                      <ol className="mbk-steps-list">
-                        <li>Go to your {isbKash ? 'bKash App (*247#)' : 'Nagad App (*167#)'}.</li>
-                        <li>Send money/payment total <strong>৳{grandTotal.toLocaleString()}</strong> (including ৳{deliveryFee} delivery charge) to <strong>{activeMfsNumber}</strong>.</li>
-                        <li>Copy the Transaction ID (TrxID) from your SMS receipt and enter it below.</li>
-                      </ol>
+                      <p style={{ fontSize: '0.82rem', color: '#78716C', margin: '4px 0 10px', lineHeight: 1.45 }}>
+                        Send <strong>৳{grandTotal.toLocaleString()}</strong> to <strong>{activeMfsNumber}</strong>, then enter the SMS Transaction ID below:
+                      </p>
 
-                      <div className="form-group" style={{ marginTop: '12px' }}>
-                        <label htmlFor="trxId" style={{ fontWeight: 600, color: 'var(--ink)' }}>
-                          Transaction ID (TrxID) *
-                        </label>
-                        <div className="input-icon-wrapper" style={{ background: '#FFFFFF' }}>
-                          <span className="input-icon">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                              <rect x="2" y="5" width="20" height="14" rx="2" />
-                              <line x1="2" y1="10" x2="22" y2="10" />
-                            </svg>
-                          </span>
-                          <input
-                            id="trxId"
-                            type="text"
-                            required
-                            placeholder={isbKash ? 'e.g. 9B7X2K4L1M' : 'e.g. 7A8B9C10D1'}
-                            value={formData.trxId}
-                            onChange={(e) => setFormData({ ...formData, trxId: e.target.value.toUpperCase() })}
-                          />
-                        </div>
+                      <div className="checkout-form-field" style={{ marginBottom: 0 }}>
+                        <input
+                          id="trxId"
+                          type="text"
+                          required
+                          placeholder={isbKash ? 'e.g. 9B7X2K4L1M' : 'e.g. 7A8B9C10D1'}
+                          value={formData.trxId}
+                          onChange={(e) => setFormData({ ...formData, trxId: e.target.value.toUpperCase() })}
+                          className="checkout-input-styled"
+                          style={{ textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                        />
                       </div>
                     </div>
                   );
                 })()}
 
-                <button type="submit" className="auth-submit-btn" style={{ marginTop: '16px' }}>
-                  Confirm Order — ৳{grandTotal.toLocaleString()}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                    <polyline points="12 5 19 12 12 19"></polyline>
-                  </svg>
+                {/* Full-width Action Button */}
+                <button type="submit" className="checkout-place-btn">
+                  Place order · ৳{grandTotal.toLocaleString()}
                 </button>
               </form>
             </div>

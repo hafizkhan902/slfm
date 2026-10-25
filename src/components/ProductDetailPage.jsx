@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import { ProductIcon } from './ProductIcon';
+import { ProductCard } from './ProductCard';
 
 export function ProductDetailPage({ product, onBack, onSelectProduct }) {
   const { addToCart, setIsCartOpen } = useCart();
@@ -57,7 +58,11 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
         {/* Breadcrumb & Back Action */}
         <div className="breadcrumb-bar">
           <button type="button" className="btn-back" onClick={onBack}>
-            ← Back to Catalogue
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Return to Catalogue</span>
           </button>
           <div className="breadcrumbs">
             <span onClick={onBack} className="crumb-link">Home</span>
@@ -179,16 +184,32 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
                 <button
                   type="button"
                   className={`btn-cart ${added ? 'added' : ''}`}
-                  style={{ padding: '14px 24px', fontSize: '1rem' }}
                   onClick={handleAddToCart}
+                  aria-label={`Add ${quantity} to cart`}
                 >
-                  {added ? 'Added to Cart ' : `Add ${quantity} to Cart`}
+                  {added ? (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>Added to Cart</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
+                      </svg>
+                      <span>Add {quantity > 1 ? `${quantity} ` : ''}to Cart</span>
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
                   className="btn-buy"
-                  style={{ padding: '14px 24px', fontSize: '1rem' }}
                   onClick={handleBuyNow}
+                  aria-label={`Buy ${product.name} now`}
                 >
                   Buy Now
                 </button>
@@ -219,37 +240,31 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
 
         {/* Related Furniture Section */}
         {relatedProducts.length > 0 && (
-          <div className="related-section">
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.8rem', marginBottom: '24px' }}>
-              You might also like
-            </h2>
-            <div className="product-grid">
+          <div className="related-section" style={{ marginTop: '72px', borderTop: '1px solid var(--border-subtle, #E7E5E4)', paddingTop: '48px' }}>
+            <div style={{ marginBottom: '28px' }}>
+              <span style={{ fontSize: '0.68rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted, #78716C)', fontWeight: 600 }}>
+                CURATED COMPANIONS
+              </span>
+              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.6rem', color: 'var(--text-primary, #1C1917)', marginTop: '4px', margin: '4px 0 0 0' }}>
+                Harmonious Pieces
+              </h2>
+            </div>
+            <div className="editorial-product-grid">
               {relatedProducts.map((rel) => (
-                <div
-                  className="product-card"
+                <ProductCard
                   key={rel.id}
-                  onClick={() => onSelectProduct(rel)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className={`product-thumb ${rel.image ? 'has-image' : ''}`} style={{ background: rel.image ? '#ffffff' : rel.bg }}>
-                    {rel.badge && (
-                      <span className={`product-badge ${rel.badge.includes('%') || rel.badge === 'Sale' ? 'sale' : ''}`}>
-                        {rel.badge}
-                      </span>
-                    )}
-                    <ProductIcon type={rel.iconType} image={rel.image} alt={rel.name} />
-                  </div>
-                  <div className="product-body">
-                    <span className="product-room">{rel.roomName}</span>
-                    <p className="product-name">{rel.name}</p>
-                    <div className="price-row">
-                      <span className="price-current">৳{rel.price.toLocaleString()}</span>
-                      {rel.originalPrice && (
-                        <span className="price-original">৳{rel.originalPrice.toLocaleString()}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  product={rel}
+                  onSelectProduct={onSelectProduct}
+                  onAddToCart={(e, item) => {
+                    e.stopPropagation();
+                    addToCart(item, 1);
+                  }}
+                  onBuyNow={(e, item) => {
+                    e.stopPropagation();
+                    addToCart(item, 1);
+                    setIsCartOpen(true);
+                  }}
+                />
               ))}
             </div>
           </div>

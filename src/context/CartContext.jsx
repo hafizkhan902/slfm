@@ -15,6 +15,7 @@ export function CartProvider({ children }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeProductModal, setActiveProductModal] = useState(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isCustomInquiryOpen, setIsCustomInquiryOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
@@ -90,6 +91,8 @@ export function CartProvider({ children }) {
         setActiveProductModal,
         isCheckoutOpen,
         setIsCheckoutOpen,
+        isCustomInquiryOpen,
+        setIsCustomInquiryOpen,
         toastMessage,
         showToast,
         totalItemsCount,
