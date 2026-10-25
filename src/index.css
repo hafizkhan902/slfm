@@ -8202,10 +8202,10 @@ footer {
   }
 }
 
-/* ---------- Native Ad Banner (320x50 Standard Slot) ---------- */
+/* ---------- Native Ad Banner Container & Layout ---------- */
 .native-banner-wrapper {
   width: 100%;
-  padding: 24px clamp(16px, 4vw, 40px);
+  padding: 16px clamp(16px, 4vw, 36px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -8214,19 +8214,27 @@ footer {
 }
 
 .native-banner-wrapper.in-feed {
-  padding: 28px 16px;
+  padding: 18px clamp(16px, 4vw, 36px);
   border-top: 1px solid var(--line, #E7E5E4);
   border-bottom: 1px solid var(--line, #E7E5E4);
   background: var(--surface, #F5F4F0);
-  margin: 20px 0;
+  margin: 16px 0;
 }
 
 .native-banner-inner {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 320px;
   width: 100%;
+  transition: max-width 0.25s ease;
+}
+
+.native-banner-inner.is-single-banner {
+  max-width: 320px;
+}
+
+.native-banner-inner.has-ad-widget {
+  max-width: 1080px;
 }
 
 .native-banner-meta {
@@ -8234,15 +8242,15 @@ footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 5px;
-  padding: 0 2px;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 0 4px;
 }
 
 .native-banner-badge {
   font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   color: var(--walnut, #5A3720);
   text-transform: uppercase;
 }
@@ -8253,7 +8261,183 @@ footer {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  letter-spacing: 0.02em;
+}
+
+.native-banner-script-slot {
+  width: 100%;
+  max-width: 100%;
+  min-height: 52px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: visible;
+  position: relative;
+}
+
+/* ====================================================================
+   FLAWLESS ARCHITECTURAL STYLING FOR ADSTERRA / CPM NATIVE AD WIDGET
+   Transforms raw, squished ad text into sleek Japandi micro-cards
+   Takes minimal vertical height (~54px) and blends with workshop aesthetic
+   ==================================================================== */
+
+/* 1. Main Ad Container & Stand */
+[id^="container-"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+}
+
+[id^="container-"] [class*="__stand"] {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 12px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  align-items: stretch !important;
+}
+
+/* 2. Individual Item Cell */
+[id^="container-"] [class*="__bn-container"] {
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+}
+
+/* 3. The Japandi Card */
+[id^="container-"] [class*="__bn"] {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 7px 10px !important;
+  background: var(--paper, #FFFFFF) !important;
+  border: 1px solid var(--line, #E7E5E4) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.03) !important;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  cursor: pointer !important;
+  position: relative !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 54px !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+[id^="container-"] [class*="__bn"]:hover {
+  border-color: var(--walnut, #5A3720) !important;
+  background: #FCFBF9 !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 4px 14px rgba(90, 55, 32, 0.08) !important;
+}
+
+/* 4. Clickable Overlay Link */
+[id^="container-"] [class*="__link"] {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 5 !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+}
+
+/* 5. Thumbnail Image Wrapper & Image */
+[id^="container-"] [class*="__img-container"] {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  position: relative !important;
+  background: var(--surface, #F5F4F0) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+[id^="container-"] [class*="__img"] {
+  width: 100% !important;
+  height: 100% !important;
+  padding-bottom: 0 !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  border-radius: 5px !important;
+  transition: transform 0.25s ease !important;
+}
+
+[id^="container-"] [class*="__bn"]:hover [class*="__img"] {
+  transform: scale(1.06) !important;
+}
+
+/* 6. Clean Architectural Typography */
+[id^="container-"] [class*="__title"] {
+  font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 0.73rem !important;
+  font-weight: 500 !important;
+  line-height: 1.32 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--ink, #1C1917) !important;
+  text-align: left !important;
+  margin: 0 !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: break-word !important;
+  transition: color 0.18s ease !important;
+}
+
+[id^="container-"] [class*="__bn"]:hover [class*="__title"] {
+  color: var(--walnut, #5A3720) !important;
+}
+
+/* 7. Hide extraneous ad network elements */
+[id^="container-"] [class*="__stand-name"] {
+  display: none !important;
+}
+
+/* 8. Responsive Breakpoints: Tablet (2 columns) & Mobile */
+@media (max-width: 899px) {
+  [id^="container-"] [class*="__stand"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-width: 540px) {
+  [id^="container-"] [class*="__stand"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  [id^="container-"] [class*="__bn"] {
+    padding: 6px 8px !important;
+    min-height: 48px !important;
+    gap: 8px !important;
+  }
+  [id^="container-"] [class*="__img-container"] {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+  }
+  [id^="container-"] [class*="__title"] {
+    font-size: 0.67rem !important;
+    line-height: 1.25 !important;
+    -webkit-line-clamp: 2 !important;
+  }
 }
 
 .native-banner-slot {
