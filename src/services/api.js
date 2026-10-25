@@ -268,5 +268,29 @@ export const api = {
       throw new Error(data.error || data.message || 'Failed to update theme section');
     }
     return data;
+  },
+
+  // Native Banner (320x50)
+  getNativeBanner: () => request('/native-banner'),
+  updateNativeBanner: (bannerData) =>
+    request('/native-banner', {
+      method: 'PUT',
+      body: JSON.stringify(bannerData)
+    }),
+  updateNativeBannerMultipart: async (formData) => {
+    const token = localStorage.getItem('shahlajuk_token');
+    const response = await fetch(`${API_BASE_URL}/native-banner`, {
+      method: 'PUT',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'Failed to update native banner');
+    }
+    return data;
   }
 };

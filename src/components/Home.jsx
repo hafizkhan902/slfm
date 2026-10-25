@@ -3,6 +3,7 @@ import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { ProductCard } from './ProductCard';
 import { ProductSkeletonGrid } from './ProductSkeleton';
+import { NativeBanner } from './NativeBanner';
 import { api } from '../services/api';
 
 const DEFAULT_THEME_SECTION = {
@@ -405,6 +406,9 @@ export function Home({ onCatalogClick, onSelectProduct, onSelectRoom, onSelectCa
           </div>
         </div>
       </section>
+
+      {/* Mid-Feed In-Stream Native Banner (320x50) */}
+      <NativeBanner placement="home_mid" className="in-feed" />
 
       {/* 3. SPACIOUS 3-COLUMN FEATURED WORKS GRID */}
       <section className="featured-works-section" id="shop">

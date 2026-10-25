@@ -9,6 +9,7 @@ import { Shop } from './components/Shop';
 import { ProductDetailPage } from './components/ProductDetailPage';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
+import { NativeBanner } from './components/NativeBanner';
 
 // Lazy-loaded modal components for code splitting & faster initial page load
 const CheckoutModal = lazy(() => import('./components/CheckoutModal').then(m => ({ default: m.CheckoutModal })));
@@ -145,6 +146,8 @@ function MainContent() {
         )}
       </ErrorBoundary>
 
+      <NativeBanner placement="footer" />
+
       <Footer />
       <CartDrawer />
       <Suspense fallback={null}>
@@ -162,12 +165,14 @@ function MainContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ProductProvider>
-        <CartProvider>
-          <MainContent />
-        </CartProvider>
-      </ProductProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ProductProvider>
+          <CartProvider>
+            <MainContent />
+          </CartProvider>
+        </ProductProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

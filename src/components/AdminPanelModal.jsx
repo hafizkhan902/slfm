@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useProducts } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { ProductIcon } from './ProductIcon';
@@ -764,6 +764,102 @@ export function AdminPanelModal() {
     }
   };
 
+  // ----------------------------------------------------
+  // Native Banner (320x50) Management State
+  // ----------------------------------------------------
+  const [nativeBannerForm, setNativeBannerForm] = useState({
+    title: 'ShahLajuk Exclusive Collections & Offers',
+    adestraLink: '',
+    adScriptCode: '',
+    imageUrl: '',
+    badgeText: 'SPONSORED',
+    placement: 'footer',
+    isActive: true,
+    openInNewTab: true,
+    altText: 'ShahLajuk Furniture Partner'
+  });
+  const [isLoadingBanner, setIsLoadingBanner] = useState(false);
+  const [isSavingBanner, setIsSavingBanner] = useState(false);
+  const [bannerToast, setBannerToast] = useState(null);
+  const [isUploadingBannerImage, setIsUploadingBannerImage] = useState(false);
+  const bannerFileInputRef = useRef(null);
+
+  const fetchNativeBanner = async () => {
+    setIsLoadingBanner(true);
+    try {
+      const res = await api.getNativeBanner();
+      if (res && res.data) {
+        setNativeBannerForm({
+          title: res.data.title || '',
+          adestraLink: res.data.adestraLink || '',
+          adScriptCode: res.data.adScriptCode || '',
+          imageUrl: res.data.imageUrl || '',
+          badgeText: res.data.badgeText || 'SPONSORED',
+          placement: res.data.placement || 'footer',
+          isActive: res.data.isActive !== false,
+          openInNewTab: res.data.openInNewTab !== false,
+          altText: res.data.altText || ''
+        });
+      }
+    } catch (err) {
+      console.warn('[AdminPanelModal] Failed to load native banner:', err.message);
+    } finally {
+      setIsLoadingBanner(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdminPanelOpen && activeTab !== 'banner') return;
+    fetchNativeBanner();
+  }, [isAdminPanelOpen, activeTab]);
+
+  const handleBannerImageUpload = async (file) => {
+    if (!file) return;
+    setIsUploadingBannerImage(true);
+    try {
+      const res = await api.uploadImage(file);
+      if (res && res.url) {
+        setNativeBannerForm(prev => ({ ...prev, imageUrl: res.url }));
+        setBannerToast({ type: 'success', message: 'Banner graphic uploaded successfully!' });
+      }
+    } catch (err) {
+      console.error('Banner upload error:', err);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setNativeBannerForm(prev => ({ ...prev, imageUrl: reader.result }));
+        setBannerToast({ type: 'success', message: 'Banner image preview loaded!' });
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingBannerImage(false);
+      setTimeout(() => setBannerToast(null), 3500);
+    }
+  };
+
+  const handleSaveNativeBanner = async (e) => {
+    if (e) e.preventDefault();
+    setIsSavingBanner(true);
+    setBannerToast(null);
+    try {
+      const payload = {
+        ...nativeBannerForm,
+        adScriptCodeBase64: btoa(unescape(encodeURIComponent(nativeBannerForm.adScriptCode || '')))
+      };
+      const res = await api.updateNativeBanner(payload);
+      if (res && res.success) {
+        setBannerToast({ type: 'success', message: 'Native Banner (320x50) saved successfully!' });
+      } else {
+        throw new Error(res?.error || 'Failed to save banner');
+      }
+    } catch (err) {
+      console.error('Failed to save native banner:', err);
+      setBannerToast({ type: 'error', message: err.message || 'Failed to save native banner.' });
+    } finally {
+      setIsSavingBanner(false);
+      setTimeout(() => setBannerToast(null), 4000);
+    }
+  };
+
   // Product Form Modal state (Add / Edit)
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
@@ -1128,6 +1224,13 @@ export function AdminPanelModal() {
             onClick={() => { setActiveTab('themes'); setSelectedUserId(null); }}
           >
             Architecture & Themes Section
+          </button>
+          <button
+            type="button"
+            className={`admin-tab-btn ${activeTab === 'banner' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('banner'); setSelectedUserId(null); }}
+          >
+            Native Banner (320x50)
           </button>
           <button
             type="button"
@@ -3547,6 +3650,446 @@ export function AdminPanelModal() {
                   >
                     {isSavingThemes ? 'Saving Changes...' : 'Save All Changes'}
                   </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content: Native Banner (320x50) */}
+        {activeTab === 'banner' && (
+          <div className="admin-tab-content">
+            <div style={{ maxWidth: '1080px', margin: '0 auto' }}>
+              {/* Header Box */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.4rem', fontFamily: 'Fraunces, serif', color: 'var(--walnut)' }}>
+                    Native Banner Management (320x50)
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--ink-soft)', marginTop: '4px' }}>
+                    Configure a non-intrusive 320x50 native ad banner with your Adestra / Adsterra direct link, custom graphic, and storefront placement.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={fetchNativeBanner}
+                    disabled={isLoadingBanner || isSavingBanner}
+                    title="Reload latest from server"
+                  >
+                    {isLoadingBanner ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveNativeBanner}
+                    disabled={isSavingBanner}
+                    style={{ minWidth: '140px' }}
+                  >
+                    {isSavingBanner ? 'Saving...' : 'Save Banner'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Toast Feedback */}
+              {bannerToast && (
+                <div
+                  style={{
+                    padding: '12px 18px',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    background: bannerToast.type === 'success' ? '#DCFCE7' : '#FEE2E2',
+                    color: bannerToast.type === 'success' ? '#166534' : '#991B1B',
+                    border: `1px solid ${bannerToast.type === 'success' ? '#86EFAC' : '#FCA5A5'}`
+                  }}
+                >
+                  {bannerToast.message}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveNativeBanner}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(320px, 1fr)', gap: '24px', alignItems: 'start' }}>
+                  
+                  {/* Left Column: Form Fields */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Status & Placement Card */}
+                    <div className="admin-form-card" style={{ background: 'var(--paper)', padding: '24px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                      <h4 style={{ fontSize: '1.05rem', color: 'var(--ink)', marginBottom: '16px', fontWeight: 600 }}>
+                        1. Status & Placement Settings
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Active Toggle */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', background: 'var(--surface)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                          <input
+                            type="checkbox"
+                            checked={nativeBannerForm.isActive}
+                            onChange={(e) => setNativeBannerForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                            style={{ width: '18px', height: '18px', accentColor: 'var(--walnut)', cursor: 'pointer' }}
+                          />
+                          <div>
+                            <strong style={{ fontSize: '0.9rem', display: 'block', color: 'var(--ink)' }}>
+                              Enable Native Banner on Storefront
+                            </strong>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+                              When enabled, the 320x50 native banner will be visible to store visitors.
+                            </span>
+                          </div>
+                        </label>
+
+                        {/* Placement Selector */}
+                        <div>
+                          <label className="input-sublabel" style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--ink-soft)', display: 'block', marginBottom: '6px' }}>
+                            Storefront Placement Location
+                          </label>
+                          <select
+                            value={nativeBannerForm.placement}
+                            onChange={(e) => setNativeBannerForm(prev => ({ ...prev, placement: e.target.value }))}
+                            className="form-control"
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--line)', background: 'var(--paper)' }}
+                          >
+                            <option value="footer">Above Footer (Global on All Pages) — Recommended</option>
+                            <option value="home_mid">Homepage Mid-Feed (Between Themes & Featured Pieces)</option>
+                            <option value="both">Both Placements (Mid-Feed & Above Footer)</option>
+                          </select>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: '4px', display: 'block' }}>
+                            The banner is non-intrusive and cleanly integrated into the normal page flow.
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ad Network Script Embed Code (Adsterra / CPM Network) */}
+                    <div className="admin-form-card" style={{ background: 'var(--paper)', padding: '24px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div>
+                          <h4 style={{ fontSize: '1.05rem', color: 'var(--ink)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>2. Ad Network Script Code (Adsterra / CPM Network)</span>
+                            <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: '4px', background: nativeBannerForm.adScriptCode?.trim() ? '#DCFCE7' : '#F3F4F6', color: nativeBannerForm.adScriptCode?.trim() ? '#166534' : '#6B7280', fontWeight: 700, letterSpacing: '0.04em' }}>
+                              {nativeBannerForm.adScriptCode?.trim() ? 'SCRIPT ACTIVE' : 'OPTIONAL'}
+                            </span>
+                          </h4>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', marginTop: '4px', display: 'block' }}>
+                            Paste the full script embed tag and container div from your ad network here.
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => {
+                              const sampleSnippet = `<script async="async" data-cfasync="false" src="https://pl32018631.profitableratecpmnetwork.com/cbdefa9aba08563b50f57b82e52a93f5/invoke.js"></script>\n<div id="container-cbdefa9aba08563b50f57b82e52a93f5"></div>`;
+                              setNativeBannerForm(prev => ({ ...prev, adScriptCode: sampleSnippet }));
+                            }}
+                            style={{ fontSize: '0.75rem', padding: '6px 10px', borderRadius: '6px', background: '#FAF8F5' }}
+                          >
+                            + Insert Sample Adsterra Snippet
+                          </button>
+                          {nativeBannerForm.adScriptCode && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              onClick={() => setNativeBannerForm(prev => ({ ...prev, adScriptCode: '' }))}
+                              style={{ fontSize: '0.75rem', padding: '6px 10px', color: '#B91C1C' }}
+                            >
+                              Clear Script
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <textarea
+                          rows={4}
+                          className="form-control"
+                          placeholder={'<script async="async" data-cfasync="false" src="https://.../invoke.js"></script>\n<div id="container-..."></div>'}
+                          value={nativeBannerForm.adScriptCode}
+                          onChange={(e) => setNativeBannerForm(prev => ({ ...prev, adScriptCode: e.target.value }))}
+                          style={{
+                            width: '100%',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: nativeBannerForm.adScriptCode?.trim() ? '1.5px solid #16A34A' : '1px solid var(--line)',
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                            fontSize: '0.8rem',
+                            lineHeight: 1.5,
+                            background: '#FAF9F6',
+                            color: 'var(--ink)'
+                          }}
+                        />
+                        <div style={{ fontSize: '0.74rem', color: 'var(--ink-soft)', lineHeight: 1.45, background: '#F8FAFC', padding: '10px 12px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
+                          💡 <strong>Dynamic Script Execution:</strong> When an ad script is entered, the storefront dynamically injects and runs the ad network script (e.g. <code>invoke.js</code>) and mounts its target container div inside the 320x50 native slot. If empty, the banner uses the direct link & image fallback below.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Destination Link & Settings */}
+                    <div className="admin-form-card" style={{ background: 'var(--paper)', padding: '24px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                      <h4 style={{ fontSize: '1.05rem', color: 'var(--ink)', marginBottom: '16px', fontWeight: 600 }}>
+                        3. Direct Adestra / Target Link (Fallback Mode)
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div>
+                          <label className="input-sublabel" style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--ink-soft)', display: 'block', marginBottom: '6px' }}>
+                            Adestra / Smartlink / Destination URL
+                          </label>
+                          <input
+                            type="url"
+                            className="form-control"
+                            placeholder="https://... (optional when Adsterra script is used above)"
+                            value={nativeBannerForm.adestraLink}
+                            onChange={(e) => setNativeBannerForm(prev => ({ ...prev, adestraLink: e.target.value }))}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)', marginTop: '4px', display: 'block' }}>
+                            Destination URL when users click the banner image or when no ad network script is provided.
+                          </span>
+                        </div>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--ink)' }}>
+                          <input
+                            type="checkbox"
+                            checked={nativeBannerForm.openInNewTab}
+                            onChange={(e) => setNativeBannerForm(prev => ({ ...prev, openInNewTab: e.target.checked }))}
+                            style={{ accentColor: 'var(--walnut)' }}
+                          />
+                          <span>Open link in a new browser tab (target="_blank" with rel="sponsored")</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Banner Graphic & Copy Card */}
+                    <div className="admin-form-card" style={{ background: 'var(--paper)', padding: '24px', borderRadius: '12px', border: '1px solid var(--line)' }}>
+                      <h4 style={{ fontSize: '1.05rem', color: 'var(--ink)', marginBottom: '16px', fontWeight: 600 }}>
+                        4. Banner Creative & Text (320×50 px)
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* File Upload or URL */}
+                        <div>
+                          <label className="input-sublabel" style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--ink-soft)', display: 'block', marginBottom: '6px' }}>
+                            Banner Graphic (Exact 320x50 Recommended)
+                          </label>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
+                            <input
+                              type="file"
+                              ref={bannerFileInputRef}
+                              accept="image/png,image/jpeg,image/webp,image/gif"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleBannerImageUpload(e.target.files[0]);
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => bannerFileInputRef.current && bannerFileInputRef.current.click()}
+                              disabled={isUploadingBannerImage}
+                              style={{ fontSize: '0.85rem', padding: '8px 14px' }}
+                            >
+                              {isUploadingBannerImage ? 'Uploading...' : 'Upload 320x50 Image'}
+                            </button>
+                            {nativeBannerForm.imageUrl && (
+                              <button
+                                type="button"
+                                className="btn btn-ghost"
+                                style={{ color: '#B91C1C', fontSize: '0.8rem' }}
+                                onClick={() => setNativeBannerForm(prev => ({ ...prev, imageUrl: '' }))}
+                              >
+                                Remove Image (Use Fallback)
+                              </button>
+                            )}
+                          </div>
+
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Or paste direct image URL (e.g. https://.../banner-320x50.png)"
+                            value={nativeBannerForm.imageUrl}
+                            onChange={(e) => setNativeBannerForm(prev => ({ ...prev, imageUrl: e.target.value }))}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--line)' }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div>
+                            <label className="input-sublabel" style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--ink-soft)', display: 'block', marginBottom: '6px' }}>
+                              Headline / Title
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="e.g. Curated Partner Collections"
+                              value={nativeBannerForm.title}
+                              onChange={(e) => setNativeBannerForm(prev => ({ ...prev, title: e.target.value }))}
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--line)' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="input-sublabel" style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--ink-soft)', display: 'block', marginBottom: '6px' }}>
+                              Micro-Badge Tag
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="e.g. SPONSORED, PARTNER, AD"
+                              value={nativeBannerForm.badgeText}
+                              onChange={(e) => setNativeBannerForm(prev => ({ ...prev, badgeText: e.target.value }))}
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--line)' }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="input-sublabel" style={{ fontWeight: 600, fontSize: '0.8rem', color: 'var(--ink-soft)', display: 'block', marginBottom: '6px' }}>
+                            Image Alt Text (Accessibility & SEO)
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g. Exclusive Furniture Partner Deal"
+                            value={nativeBannerForm.altText}
+                            onChange={(e) => setNativeBannerForm(prev => ({ ...prev, altText: e.target.value }))}
+                            style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid var(--line)' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Live 320x50 Preview & Guidelines */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div className="admin-form-card" style={{ background: 'var(--paper)', padding: '24px', borderRadius: '12px', border: '1px solid var(--line)', position: 'sticky', top: '24px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                        <h4 style={{ fontSize: '1.05rem', color: 'var(--ink)', fontWeight: 600, margin: 0 }}>
+                          Live 320x50 Preview
+                        </h4>
+                        <span style={{ fontSize: '0.72rem', background: '#F5F4F0', padding: '3px 8px', borderRadius: '4px', fontWeight: 600, color: 'var(--ink-soft)' }}>
+                          320 × 50 px
+                        </span>
+                      </div>
+
+                      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '18px' }}>
+                        This is the exact size and styling visitors will see on mobile & desktop screens:
+                      </p>
+
+                      {/* Mockup Container */}
+                      <div style={{ background: 'var(--bg)', padding: '24px 16px', borderRadius: '8px', border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        
+                        {/* Render Preview Component */}
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', width: '320px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.12em', color: 'var(--walnut)', textTransform: 'uppercase' }}>
+                              {nativeBannerForm.badgeText || 'SPONSORED'}
+                            </span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--ink-soft)' }}>
+                              {nativeBannerForm.adScriptCode?.trim() ? 'Adsterra CPM Network' : 'Adestra Partner'}
+                            </span>
+                          </div>
+
+                          <div
+                            style={{
+                              width: '320px',
+                              height: '50px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              border: '1px solid var(--line)',
+                              background: '#FFFFFF',
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                              position: 'relative'
+                            }}
+                          >
+                            {nativeBannerForm.adScriptCode && nativeBannerForm.adScriptCode.trim() ? (
+                              <div style={{ width: '320px', height: '50px', display: 'flex', alignItems: 'center', padding: '0 12px', gap: '10px', background: 'linear-gradient(90deg, #F0FDF4 0%, #DCFCE7 100%)', border: '1px solid #BBF7D0' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '4px', background: '#16A34A', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                    <polyline points="16 18 22 12 16 6"></polyline>
+                                    <polyline points="8 6 2 12 8 18"></polyline>
+                                  </svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#166534', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    Adsterra CPM Script Active
+                                  </div>
+                                  <div style={{ fontSize: '0.65rem', color: '#15803D', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'monospace' }}>
+                                    {nativeBannerForm.adScriptCode.includes('container-')
+                                      ? (nativeBannerForm.adScriptCode.match(/id=["'](container-[^"']+)["']/)?.[1] || 'Dynamic container mounted')
+                                      : 'invoke.js script mounted'}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }}></span>
+                                </div>
+                              </div>
+                            ) : nativeBannerForm.imageUrl ? (
+                              <img
+                                src={nativeBannerForm.imageUrl}
+                                alt="Banner preview"
+                                style={{ width: '320px', height: '50px', objectFit: 'cover', display: 'block' }}
+                              />
+                            ) : (
+                              <div style={{ width: '320px', height: '50px', display: 'flex', alignItems: 'center', padding: '0 12px', gap: '10px', background: 'linear-gradient(90deg, #F5F4F0 0%, #FAF8F5 100%)' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '4px', background: 'var(--walnut)', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                    <path d="M2 17l10 5 10-5"></path>
+                                    <path d="M2 12l10 5 10-5"></path>
+                                  </svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+                                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {nativeBannerForm.title || 'ShahLajuk Architectural Collections'}
+                                  </div>
+                                  <div style={{ fontSize: '0.65rem', color: 'var(--ink-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    Tap to explore Adestra link
+                                  </div>
+                                </div>
+                                <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#FFFFFF', border: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--walnut)' }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Non-intrusive Guarantee */}
+                      <div style={{ marginTop: '20px', padding: '14px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontWeight: 600, fontSize: '0.84rem', marginBottom: '4px' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                          <span>Non-Intrusive UX Assured</span>
+                        </div>
+                        <p style={{ fontSize: '0.76rem', color: '#166534', lineHeight: 1.45, margin: 0 }}>
+                          Placed smoothly inside page sections. Zero popup interruptions, zero floating button blocks, and fully responsive across mobile and desktop devices.
+                        </p>
+                      </div>
+
+                      {/* Save Button */}
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isSavingBanner}
+                        style={{ width: '100%', marginTop: '20px', padding: '12px 18px', fontWeight: 600 }}
+                      >
+                        {isSavingBanner ? 'Saving...' : 'Save Banner Configuration'}
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </form>
             </div>

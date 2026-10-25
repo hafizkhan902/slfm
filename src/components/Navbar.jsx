@@ -26,6 +26,17 @@ export function Navbar({ onHomeClick, onCatalogClick }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [orderDropdownOpen, setOrderDropdownOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Monitor scroll position to apply elevated styling when scrolled
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 15);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Close menus on ESC key or clicking outside
   useEffect(() => {
@@ -131,7 +142,7 @@ export function Navbar({ onHomeClick, onCatalogClick }) {
 
   return (
     <>
-      <header className="minimal-header">
+      <header className={`minimal-header ${isScrolled ? 'is-scrolled' : ''}`}>
         <div className="header-grid">
           {/* LEFT: Minimalist Nav Links (Desktop) & Drawer Opener (Mobile Only) */}
           <div className="header-left">
