@@ -1,7 +1,7 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ProductProvider } from './context/ProductContext';
+import { ProductProvider, useProducts } from './context/ProductContext';
 import { useCart } from './context/CartContext';
 import { Navbar } from './components/Navbar';
 import { Home } from './components/Home';
@@ -64,10 +64,47 @@ function ToastContainer() {
 }
 
 function MainContent() {
+  const { products } = useProducts();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRoom, setSelectedRoom] = useState('all');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [currentPage, setCurrentPage] = useState('home'); // 'home' | 'catalog'
+
+  // Handle direct share link query params (e.g. ?product=prod-123 or ?id=...)
+  React.useEffect(() => {
+    if (products && products.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const prodParam = params.get('product') || params.get('id');
+      if (prodParam) {
+        const found = products.find(
+          (p) =>
+            String(p.id).toLowerCase() === String(prodParam).toLowerCase() ||
+            String(p.mongoId) === String(prodParam)
+        );
+        if (found) {
+          setSelectedProduct(found);
+        }
+      }
+    }
+  }, [products]);
+
+  // Sync browser URL with selected product so current address bar always shows shareable link
+  React.useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (selectedProduct) {
+        url.searchParams.set('product', selectedProduct.id || selectedProduct.mongoId);
+        window.history.replaceState({}, '', url.toString());
+      } else {
+        url.searchParams.delete('product');
+        url.searchParams.delete('id');
+        const cleanPath = url.pathname + (url.search ? url.search : '') + url.hash;
+        window.history.replaceState({}, '', cleanPath);
+      }
+    } catch {
+      // Ignore URL manipulation error on unsupported environments
+    }
+  }, [selectedProduct]);
 
   // Log visitor session to backend MongoDB database
   React.useEffect(() => {

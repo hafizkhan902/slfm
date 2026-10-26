@@ -3,6 +3,7 @@ import { useProducts } from '../context/ProductContext';
 import { useAuth } from '../context/AuthContext';
 import { ProductIcon } from './ProductIcon';
 import { api } from '../services/api';
+import { printOrderReceipt } from '../utils/printReceipt';
 
 export function AdminPanelModal() {
   const {
@@ -591,7 +592,8 @@ export function AdminPanelModal() {
   const [openSettingSections, setOpenSettingSections] = useState({
     mfs: true,
     footer: true,
-    promos: true
+    promos: true,
+    shares: true
   });
 
   const toggleSettingSection = (sectionKey) => {
@@ -603,6 +605,58 @@ export function AdminPanelModal() {
 
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
+
+  // ----------------------------------------------------
+  // Share & Link Copy History State
+  // ----------------------------------------------------
+  const [shareHistory, setShareHistory] = useState([]);
+  const [shareMetrics, setShareMetrics] = useState({ totalShares: 0, uniqueProductsShared: 0, topSharedProducts: [] });
+  const [isLoadingShares, setIsLoadingShares] = useState(false);
+  const [shareSearch, setShareSearch] = useState('');
+
+  const fetchShareHistory = async () => {
+    setIsLoadingShares(true);
+    try {
+      const res = await api.getShareHistory();
+      if (res && res.success) {
+        setShareHistory(res.shares || []);
+        if (res.metrics) {
+          setShareMetrics(res.metrics);
+        }
+      }
+    } catch (err) {
+      console.warn('[AdminPanelModal] Failed to load share history:', err.message);
+    } finally {
+      setIsLoadingShares(false);
+    }
+  };
+
+  const handleClearShareHistory = async () => {
+    if (!window.confirm('Are you sure you want to clear all product link sharing history? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await api.clearShareHistory();
+      setShareHistory([]);
+      setShareMetrics({ totalShares: 0, uniqueProductsShared: 0, topSharedProducts: [] });
+      alert('Share history cleared successfully.');
+    } catch (err) {
+      alert(`Failed to clear share history: ${err.message}`);
+    }
+  };
+
+  const handleDeleteShareItem = async (id) => {
+    try {
+      await api.deleteShareItem(id);
+      setShareHistory(prev => prev.filter(item => item._id !== id));
+      setShareMetrics(prev => ({
+        ...prev,
+        totalShares: Math.max(0, prev.totalShares - 1)
+      }));
+    } catch (err) {
+      alert(`Failed to delete record: ${err.message}`);
+    }
+  };
 
   useEffect(() => {
     if (!isAdminPanelOpen) return;
@@ -631,6 +685,9 @@ export function AdminPanelModal() {
       }
     };
     fetchSettings();
+    if (activeTab === 'settings') {
+      fetchShareHistory();
+    }
   }, [isAdminPanelOpen, activeTab]);
 
   const handleSaveSettings = async (e) => {
@@ -1911,11 +1968,10 @@ export function AdminPanelModal() {
                                       className="btn-copy-mini"
                                       style={{ background: '#F8F6F2', border: '1px solid #C9A876', color: '#4A2C19', fontWeight: 600, padding: '6px 12px' }}
                                       onClick={() => {
-                                        const targetId = order.orderNumber || order.id || order._id;
-                                        window.open(api.getOrderReceiptUrl(targetId), '_blank');
+                                        printOrderReceipt(order);
                                       }}
                                     >
-                                      Print PDF Receipt
+                                      Print Receipt
                                     </button>
                                   </div>
                                 </div>
@@ -3301,6 +3357,232 @@ export function AdminPanelModal() {
                           />
                         </div>
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Collapsible Section 4: Product Link Sharing & Copy History */}
+                <div className="settings-accordion-card" style={{ marginBottom: '16px', border: '1px solid var(--line)', borderRadius: '8px', overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    className="settings-accordion-header"
+                    onClick={() => toggleSettingSection('shares')}
+                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: 'var(--bg)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--ink)' }}>
+                        🔗 Product Link Sharing & Copy History
+                      </span>
+                      <span style={{ fontSize: '0.78rem', background: 'var(--walnut)', color: '#fff', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                        {shareMetrics?.totalShares || shareHistory?.length || 0} Total Shares
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--ink-soft)' }}>
+                      {openSettingSections.shares ? '−' : '+'}
+                    </span>
+                  </button>
+
+                  {openSettingSections.shares && (
+                    <div style={{ padding: '18px', background: 'var(--paper)', borderTop: '1px solid var(--line)' }}>
+                      {/* Metric Stat Cards */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+                        <div style={{ padding: '14px 16px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--ink-soft)', letterSpacing: '0.5px', display: 'block' }}>
+                            Total Link Copies
+                          </span>
+                          <span style={{ fontSize: '1.6rem', fontWeight: '800', fontFamily: 'Fraunces, serif', color: 'var(--walnut)', display: 'block', marginTop: '4px' }}>
+                            {shareMetrics?.totalShares || shareHistory?.length || 0}
+                          </span>
+                        </div>
+                        <div style={{ padding: '14px 16px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--ink-soft)', letterSpacing: '0.5px', display: 'block' }}>
+                            Unique Products Shared
+                          </span>
+                          <span style={{ fontSize: '1.6rem', fontWeight: '800', fontFamily: 'Fraunces, serif', color: '#065F46', display: 'block', marginTop: '4px' }}>
+                            {shareMetrics?.uniqueProductsShared || 0}
+                          </span>
+                        </div>
+                        <div style={{ padding: '14px 16px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--ink-soft)', letterSpacing: '0.5px', display: 'block' }}>
+                            Most Shared Item
+                          </span>
+                          <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--ink)', display: 'block', marginTop: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={shareMetrics?.topSharedProducts?.[0]?.productName || 'None'}>
+                            {shareMetrics?.topSharedProducts?.[0]?.productName ? `${shareMetrics.topSharedProducts[0].productName} (${shareMetrics.topSharedProducts[0].count}x)` : 'No shares yet'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Search and Action Bar */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                        <div style={{ flex: 1, minWidth: '220px', maxWidth: '380px' }}>
+                          <input
+                            type="text"
+                            value={shareSearch}
+                            onChange={(e) => setShareSearch(e.target.value)}
+                            placeholder="Search by product, user, or share method..."
+                            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--line)', fontSize: '0.88rem' }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={fetchShareHistory}
+                            disabled={isLoadingShares}
+                            style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--bg)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: 'var(--ink)' }}
+                          >
+                            {isLoadingShares ? 'Refreshing...' : '🔄 Refresh'}
+                          </button>
+                          {shareHistory.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleClearShareHistory}
+                              style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #FCA5A5', background: '#FEF2F2', color: '#B91C1C', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
+                            >
+                              🗑️ Clear All History
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Shares Table */}
+                      {isLoadingShares ? (
+                        <div style={{ padding: '30px', textAlign: 'center', color: 'var(--ink-soft)' }}>
+                          Loading share and link copy records...
+                        </div>
+                      ) : shareHistory.length === 0 ? (
+                        <div style={{ padding: '32px 20px', textAlign: 'center', background: 'var(--bg)', borderRadius: '8px', border: '1px dashed var(--line)' }}>
+                          <div style={{ fontSize: '1.8rem', marginBottom: '8px' }}>🔗</div>
+                          <p style={{ fontWeight: '600', color: 'var(--ink)', marginBottom: '4px' }}>No Product Links Shared Yet</p>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', maxWidth: '420px', margin: '0 auto' }}>
+                            When shoppers or visitors copy links or share items from the Product Details page, their copy events will be tracked and displayed here in real time.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="admin-table-container" style={{ border: '1px solid var(--line)', borderRadius: '6px', overflowX: 'auto' }}>
+                          <table className="admin-table" style={{ width: '100%', fontSize: '0.88rem' }}>
+                            <thead>
+                              <tr>
+                                <th>Product Details</th>
+                                <th>Method</th>
+                                <th>Device / IP</th>
+                                <th>Shared By</th>
+                                <th>Timestamp</th>
+                                <th>Shared Link</th>
+                                <th style={{ textAlign: 'center' }}>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {shareHistory
+                                .filter(item => {
+                                  if (!shareSearch.trim()) return true;
+                                  const q = shareSearch.toLowerCase();
+                                  return (
+                                    (item.productName && item.productName.toLowerCase().includes(q)) ||
+                                    (item.category && item.category.toLowerCase().includes(q)) ||
+                                    (item.room && item.room.toLowerCase().includes(q)) ||
+                                    (item.userName && item.userName.toLowerCase().includes(q)) ||
+                                    (item.userEmail && item.userEmail.toLowerCase().includes(q)) ||
+                                    (item.userPhone && item.userPhone.toLowerCase().includes(q)) ||
+                                    (item.shareType && item.shareType.toLowerCase().includes(q))
+                                  );
+                                })
+                                .map((item) => {
+                                  const shareTypeLabel =
+                                    (item.shareType === 'copy_link' || item.shareType === 'clipboard_copy') ? '📋 Copied Link' :
+                                    item.shareType === 'whatsapp' ? '💬 WhatsApp' :
+                                    item.shareType === 'facebook' ? '🌐 Facebook' :
+                                    item.shareType === 'native_share' ? '📱 Mobile Share' : (item.shareType || '🔗 Copied');
+
+                                  const shareTypeBg =
+                                    (item.shareType === 'copy_link' || item.shareType === 'clipboard_copy') ? '#F3F4F6' :
+                                    item.shareType === 'whatsapp' ? '#DCFCE7' :
+                                    item.shareType === 'facebook' ? '#EFF6FF' : '#FEF3C7';
+
+                                  const shareTypeColor =
+                                    (item.shareType === 'copy_link' || item.shareType === 'clipboard_copy') ? '#374151' :
+                                    item.shareType === 'whatsapp' ? '#166534' :
+                                    item.shareType === 'facebook' ? '#1E40AF' : '#92400E';
+
+                                  return (
+                                    <tr key={item._id}>
+                                      <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                          {item.productImage && (
+                                            <img
+                                              src={item.productImage}
+                                              alt={item.productName}
+                                              style={{ width: '38px', height: '38px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--line)', flexShrink: 0 }}
+                                            />
+                                          )}
+                                          <div>
+                                            <strong style={{ display: 'block', color: 'var(--ink)', fontSize: '0.88rem' }}>
+                                              {item.productName || `Product #${item.productId}`}
+                                            </strong>
+                                            <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
+                                              {item.productPrice ? `৳${Number(item.productPrice).toLocaleString()} ` : ''}
+                                              {item.category && `• ${item.category}`}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td>
+                                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600', background: shareTypeBg, color: shareTypeColor }}>
+                                          {shareTypeLabel}
+                                        </span>
+                                      </td>
+                                      <td>
+                                        <div style={{ fontSize: '0.82rem' }}>
+                                          <span style={{ fontWeight: '600', color: 'var(--ink)' }}>{item.device || 'Web'}</span>
+                                          {item.ip && <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--ink-soft)' }}>{item.ip}</span>}
+                                        </div>
+                                      </td>
+                                      <td>
+                                        <div style={{ fontSize: '0.82rem' }}>
+                                          {item.userName ? (
+                                            <>
+                                              <strong style={{ color: 'var(--ink)', display: 'block' }}>{item.userName}</strong>
+                                              <span style={{ fontSize: '0.74rem', color: 'var(--ink-soft)' }}>{item.userEmail || item.userPhone || 'User'}</span>
+                                            </>
+                                          ) : (
+                                            <span style={{ color: 'var(--ink-soft)', fontStyle: 'italic' }}>Guest Visitor</span>
+                                          )}
+                                        </div>
+                                      </td>
+                                      <td>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>
+                                          {item.createdAt ? new Date(item.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'Just now'}
+                                        </span>
+                                      </td>
+                                      <td>
+                                        <a
+                                          href={item.sharedUrl || `/?product=${item.productId}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{ fontSize: '0.78rem', color: 'var(--walnut)', textDecoration: 'underline', maxWidth: '140px', display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                          title={item.sharedUrl}
+                                        >
+                                          View Link ↗
+                                        </a>
+                                      </td>
+                                      <td style={{ textAlign: 'center' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteShareItem(item._id)}
+                                          title="Delete this record"
+                                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '0.95rem', padding: '4px 8px', borderRadius: '4px' }}
+                                          onMouseEnter={(e) => { e.currentTarget.style.color = '#DC2626'; }}
+                                          onMouseLeave={(e) => { e.currentTarget.style.color = '#9CA3AF'; }}
+                                        >
+                                          🗑️
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

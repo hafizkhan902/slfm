@@ -57,6 +57,31 @@ export const api = {
     return `${API_BASE_URL}/orders/${encodeURIComponent(cleanId)}/pdf`;
   },
 
+  // Server-Side Rendered (SSR) HTML Receipt URL
+  getOrderReceiptHtmlUrl: (orderNumber, autoPrint = false) => {
+    const cleanId = String(orderNumber).trim();
+    return `${API_BASE_URL}/orders/${encodeURIComponent(cleanId)}/receipt${autoPrint ? '?print=true' : ''}`;
+  },
+
+  // Silent Background PDF Receipt Download without exposing raw API URL in browser tab
+  downloadOrderReceiptPdf: async (orderNumber) => {
+    const cleanId = String(orderNumber).trim();
+    const url = `${API_BASE_URL}/orders/${encodeURIComponent(cleanId)}/pdf`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to download PDF receipt (Status: ${response.status})`);
+    }
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `Receipt-${cleanId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  },
+
   // Store MFS Settings & Account Numbers
   getSettings: () => request('/settings'),
   updateSettings: (settingsData) =>
@@ -301,5 +326,22 @@ export const api = {
       throw new Error(data.error || data.message || 'Failed to update native banner');
     }
     return data;
-  }
+  },
+
+  // Product Link Sharing & Copy History
+  recordProductShare: (shareData) =>
+    request('/shares', {
+      method: 'POST',
+      body: JSON.stringify(shareData)
+    }),
+  getShareHistory: (limit = 200) =>
+    request(`/shares?limit=${limit}`),
+  deleteShareItem: (id) =>
+    request(`/shares/${id}`, {
+      method: 'DELETE'
+    }),
+  clearShareHistory: () =>
+    request('/shares', {
+      method: 'DELETE'
+    })
 };

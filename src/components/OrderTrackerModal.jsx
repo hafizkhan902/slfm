@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { ProductIcon } from './ProductIcon';
 import { validatePhone } from '../utils/validation';
 import { api } from '../services/api';
+import { printOrderReceipt } from '../utils/printReceipt';
 
 function OrderCard({ order, defaultExpanded = false }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -113,8 +114,7 @@ function OrderCard({ order, defaultExpanded = false }) {
                 className="btn-print-receipt"
                 onClick={(e) => {
                   e.stopPropagation();
-                  const targetId = order.orderNumber || order.id || order._id;
-                  window.open(api.getOrderReceiptUrl(targetId), '_blank');
+                  printOrderReceipt(order);
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

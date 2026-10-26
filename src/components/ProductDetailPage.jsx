@@ -1,15 +1,71 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
+import { useAuth } from '../context/AuthContext';
 import { ProductIcon } from './ProductIcon';
 import { ProductCard } from './ProductCard';
+import { api } from '../services/api';
 
 export function ProductDetailPage({ product, onBack, onSelectProduct }) {
-  const { addToCart, setIsCartOpen } = useCart();
+  const { addToCart, setIsCartOpen, showToast } = useCart();
   const { products } = useProducts();
+  const { currentUser } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [activeImage, setActiveImage] = useState('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const getShareUrl = () => {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}${window.location.pathname}?product=${encodeURIComponent(product?.id || product?.mongoId || '')}`;
+  };
+
+  const logShareToDb = async (shareType = 'copy_link') => {
+    try {
+      const shareUrl = getShareUrl();
+      await api.recordProductShare({
+        productId: product?.id || product?.mongoId,
+        productName: product?.name || 'Furniture Product',
+        productPrice: product?.price || 0,
+        productImage: activeImage || product?.image || '',
+        category: product?.categoryName || product?.category || '',
+        room: product?.roomName || product?.room || '',
+        sharedUrl: shareUrl,
+        shareType,
+        userId: currentUser?.id || currentUser?._id || null,
+        userName: currentUser?.name || 'Guest Customer',
+        userEmail: currentUser?.email || '',
+        userPhone: currentUser?.phone || ''
+      });
+    } catch (err) {
+      console.warn('[Share] Failed to log link copy to database:', err.message);
+    }
+  };
+
+  const copyToClipboard = async (shareType = 'copy_link') => {
+    const url = getShareUrl();
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setIsCopied(true);
+      if (showToast) showToast('Product link copied to clipboard!');
+      logShareToDb(shareType);
+      setTimeout(() => setIsCopied(false), 2500);
+    } catch {
+      if (showToast) showToast('Failed to copy link.');
+    }
+  };
 
   const allImages = useMemo(() => {
     if (!product) return [];
@@ -56,21 +112,47 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
       <div className="wrap" style={{ paddingTop: '32px', paddingBottom: '64px' }}>
         
         {/* Breadcrumb & Back Action */}
-        <div className="breadcrumb-bar">
-          <button type="button" className="btn-back" onClick={onBack}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span>Return to Catalogue</span>
-          </button>
-          <div className="breadcrumbs">
-            <span onClick={onBack} className="crumb-link">Home</span>
-            <span className="crumb-sep">/</span>
-            <span onClick={onBack} className="crumb-link">{product.roomName}</span>
-            <span className="crumb-sep">/</span>
-            <span className="crumb-current">{product.name}</span>
+        <div className="breadcrumb-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <button type="button" className="btn-back" onClick={onBack}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              <span>Return to Catalogue</span>
+            </button>
+            <div className="breadcrumbs">
+              <span onClick={onBack} className="crumb-link">Home</span>
+              <span className="crumb-sep">/</span>
+              <span onClick={onBack} className="crumb-link">{product.roomName}</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-current">{product.name}</span>
+            </div>
           </div>
+
+          <button
+            type="button"
+            className="btn-share-pill"
+            onClick={() => copyToClipboard('copy_link')}
+            title="Copy shareable link for this product"
+          >
+            {isCopied ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>Link Copied!</span>
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                <span>Copy Link</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Main Product Layout */}
@@ -213,6 +295,22 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
                 >
                   Buy Now
                 </button>
+                <button
+                  type="button"
+                  className="btn-share-action"
+                  onClick={() => setIsShareModalOpen(true)}
+                  aria-label={`Share ${product.name}`}
+                  title="Share this product details link"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                  </svg>
+                  <span>Share</span>
+                </button>
               </div>
             </div>
 
@@ -270,6 +368,140 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
           </div>
         )}
       </div>
+
+      {/* Share Modal Dialog */}
+      {isShareModalOpen && (
+        <div className="modal-backdrop open" onClick={() => setIsShareModalOpen(false)}>
+          <div className="share-modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="share-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="share-icon-circle">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontFamily: 'Fraunces, serif', color: 'var(--walnut)' }}>
+                    Share Product Details
+                  </h3>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--stone)' }}>
+                    Copy link to share this piece with friends or family
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="share-modal-close"
+                onClick={() => setIsShareModalOpen(false)}
+                aria-label="Close share dialog"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="share-modal-body">
+              {/* Product Preview Card */}
+              <div className="share-product-preview">
+                {displayImg ? (
+                  <img src={displayImg} alt={product.name} className="share-preview-thumb" />
+                ) : (
+                  <div className="share-preview-thumb-placeholder">
+                    <ProductIcon type={product.iconType} />
+                  </div>
+                )}
+                <div className="share-preview-info">
+                  <div className="share-preview-category">{product.roomName} • {product.categoryName}</div>
+                  <h4 className="share-preview-title">{product.name}</h4>
+                  <div className="share-preview-price">৳{product.price.toLocaleString()}</div>
+                </div>
+              </div>
+
+              {/* Copy Link Bar */}
+              <label className="share-input-label">Shareable Page Link</label>
+              <div className="share-copy-bar">
+                <input
+                  type="text"
+                  readOnly
+                  value={getShareUrl()}
+                  className="share-url-input"
+                  onClick={(e) => e.target.select()}
+                />
+                <button
+                  type="button"
+                  className={`btn-copy-link ${isCopied ? 'copied' : ''}`}
+                  onClick={() => copyToClipboard('copy_link')}
+                >
+                  {isCopied ? (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      <span>Copy Link</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Quick Social Share Buttons */}
+              <div className="share-social-grid">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(`Check out ${product.name} (৳${product.price.toLocaleString()}) at ShahLajuk Furniture Mart: ` + getShareUrl())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="social-share-btn whatsapp"
+                  onClick={() => logShareToDb('whatsapp')}
+                >
+                  <span className="social-icon">💬</span>
+                  <span>WhatsApp</span>
+                </a>
+
+                <a
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getShareUrl())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="social-share-btn facebook"
+                  onClick={() => logShareToDb('facebook')}
+                >
+                  <span className="social-icon">📘</span>
+                  <span>Facebook</span>
+                </a>
+
+                {typeof navigator !== 'undefined' && navigator.share && (
+                  <button
+                    type="button"
+                    className="social-share-btn native"
+                    onClick={async () => {
+                      try {
+                        await navigator.share({
+                          title: `${product.name} — ShahLajuk Furniture Mart`,
+                          text: `Check out ${product.name} at ShahLajuk Furniture Mart`,
+                          url: getShareUrl()
+                        });
+                        logShareToDb('native_share');
+                      } catch {}
+                    }}
+                  >
+                    <span className="social-icon">📲</span>
+                    <span>More</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
