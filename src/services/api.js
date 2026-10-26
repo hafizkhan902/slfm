@@ -78,7 +78,16 @@ export const api = {
 
   getProfile: () => request('/auth/me'),
 
-  getUsers: () => request('/auth/users'),
+  getUsers: async () => {
+    const res = await request('/auth/users');
+    if (res && Array.isArray(res.users)) {
+      return res.users;
+    }
+    if (Array.isArray(res)) {
+      return res;
+    }
+    return res?.users || [];
+  },
 
   updateUserStatus: (userId, status) =>
     request(`/auth/users/${userId}/status`, {

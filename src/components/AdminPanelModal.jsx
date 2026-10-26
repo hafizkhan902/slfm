@@ -20,15 +20,27 @@ export function AdminPanelModal() {
     deletePromo
   } = useProducts();
 
-  const { ordersDb, usersDb, updateOrderStatus, updateUserStatus, currentUser, fetchLatestOrders } = useAuth();
+  const { ordersDb, usersDb, fetchUsers, updateOrderStatus, updateUserStatus, currentUser, fetchLatestOrders } = useAuth();
 
   const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' | 'products' | 'promos' | 'orders' | 'users' | 'visitors'
   const [productSearch, setProductSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState('all');
   const [analyticsCustomerSort, setAnalyticsCustomerSort] = useState('spent-desc'); // 'spent-desc' | 'spent-asc' | 'orders-desc' | 'name-asc'
+
+  const handleRefreshUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      if (typeof fetchUsers === 'function') {
+        await fetchUsers();
+      }
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
 
   // ----------------------------------------------------
   // Delivery Areas Management State & Effects
@@ -183,8 +195,20 @@ export function AdminPanelModal() {
       fetchDeliveryAreas();
       fetchGeoDivisions();
       fetchInquiries();
+      if (typeof fetchUsers === 'function') {
+        fetchUsers();
+      }
+      if (typeof fetchLatestOrders === 'function') {
+        fetchLatestOrders();
+      }
     }
   }, [isAdminPanelOpen]);
+
+  useEffect(() => {
+    if (activeTab === 'users' && isAdminPanelOpen && typeof fetchUsers === 'function') {
+      fetchUsers();
+    }
+  }, [activeTab, isAdminPanelOpen]);
 
 
   // Load districts when division selected in geo picker
@@ -2026,6 +2050,16 @@ export function AdminPanelModal() {
                             <span> {selectedUser.email}</span>
                             <span> {selectedUser.phone || 'N/A'}</span>
                             <span> {selectedUser.id}</span>
+                            {selectedUser.lastLogin && (
+                              <span style={{ color: '#16A34A', fontWeight: '500' }}>
+                                🟢 Last Login: {new Date(selectedUser.lastLogin).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                            {selectedUser.createdAt && (
+                              <span>
+                                📅 Joined: {new Date(selectedUser.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            )}
                           </div>
                           {selectedUser.address && (
                             <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
@@ -2174,16 +2208,29 @@ export function AdminPanelModal() {
             ) : (
               /* Users List Main View */
               <div>
-                <div className="admin-toolbar">
+                <div className="admin-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                   <input
                     type="text"
                     placeholder="Search users by name, email, phone, role..."
                     className="admin-search-input"
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
+                    style={{ flex: 1, minWidth: '240px' }}
                   />
-                  <div style={{ fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
-                    Total Registered Accounts: <strong>{(usersDb || []).length}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
+                      Total Registered Accounts: <strong>{(usersDb || []).length}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-admin-secondary"
+                      onClick={handleRefreshUsers}
+                      disabled={isLoadingUsers}
+                      style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      title="Fetch live users from MongoDB"
+                    >
+                      {isLoadingUsers ? '⏳ Refreshing...' : '🔄 Refresh Users'}
+                    </button>
                   </div>
                 </div>
 
@@ -2201,8 +2248,22 @@ export function AdminPanelModal() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(usersDb || [])
-                        .filter((user) => {
+                      {(usersDb || []).length === 0 ? (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: 'var(--ink-soft)' }}>
+                            <div style={{ fontSize: '1.2rem', marginBottom: '8px' }}>👤</div>
+                            <p style={{ fontWeight: '500', marginBottom: '8px' }}>No users retrieved from database yet.</p>
+                            <button
+                              type="button"
+                              className="btn-admin-primary"
+                              onClick={handleRefreshUsers}
+                              style={{ padding: '6px 14px', fontSize: '0.82rem' }}
+                            >
+                              Fetch Users from Database
+                            </button>
+                          </td>
+                        </tr>
+                      ) : (usersDb || []).filter((user) => {
                           const query = userSearch.toLowerCase();
                           return (
                             user.name?.toLowerCase().includes(query) ||
@@ -2212,10 +2273,28 @@ export function AdminPanelModal() {
                             user.status?.toLowerCase().includes(query) ||
                             user.id?.toLowerCase().includes(query)
                           );
-                        })
-                        .map((user) => {
-                          const userOrders = ordersDb.filter(
-                            o => o.userId === user.id ||
+                        }).length === 0 ? (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: 'var(--ink-soft)' }}>
+                            No users match your search query: "<strong>{userSearch}</strong>".
+                          </td>
+                        </tr>
+                      ) : (
+                        (usersDb || [])
+                          .filter((user) => {
+                            const query = userSearch.toLowerCase();
+                            return (
+                              user.name?.toLowerCase().includes(query) ||
+                              user.email?.toLowerCase().includes(query) ||
+                              user.phone?.includes(query) ||
+                              user.role?.toLowerCase().includes(query) ||
+                              user.status?.toLowerCase().includes(query) ||
+                              user.id?.toLowerCase().includes(query)
+                            );
+                          })
+                          .map((user) => {
+                            const userOrders = ordersDb.filter(
+                              o => o.userId === user.id ||
                                  (o.phone && o.phone === user.phone) ||
                                  (o.customerName && user.name && o.customerName.toLowerCase() === user.name.toLowerCase()) ||
                                  (o.customerName && user.email && o.customerName.toLowerCase() === user.email.toLowerCase())
@@ -2248,6 +2327,16 @@ export function AdminPanelModal() {
                                   <div>
                                     <strong style={{ display: 'block', color: 'var(--ink)' }}>{user.name}</strong>
                                     <span className="table-subid">{user.email}</span>
+                                    {user.lastLogin && (
+                                      <span className="table-subid" style={{ display: 'block', fontSize: '0.72rem', color: '#16A34A', marginTop: '2px', fontWeight: '500' }}>
+                                        🟢 Last login: {new Date(user.lastLogin).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    )}
+                                    {!user.lastLogin && user.createdAt && (
+                                      <span className="table-subid" style={{ display: 'block', fontSize: '0.72rem', color: 'var(--stone)', marginTop: '2px' }}>
+                                        Joined: {new Date(user.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </td>
@@ -2341,7 +2430,8 @@ export function AdminPanelModal() {
                               </td>
                             </tr>
                           );
-                        })}
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -3670,7 +3760,39 @@ export function AdminPanelModal() {
                     Configure a non-intrusive 320x50 native ad banner with your Adestra / Adsterra direct link, custom graphic, and storefront placement.
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Quick Status Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setNativeBannerForm(prev => ({ ...prev, isActive: !prev.isActive }))}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      border: nativeBannerForm.isActive ? '1px solid #86EFAC' : '1px solid #FCA5A5',
+                      background: nativeBannerForm.isActive ? '#DCFCE7' : '#FEE2E2',
+                      color: nativeBannerForm.isActive ? '#166534' : '#991B1B',
+                      fontWeight: 600,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    title="Click to toggle Ads Section ON or OFF"
+                  >
+                    <span
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: nativeBannerForm.isActive ? '#16A34A' : '#DC2626',
+                        display: 'inline-block'
+                      }}
+                    />
+                    <span>Ads: {nativeBannerForm.isActive ? 'ON (Visible)' : 'OFF (Hidden)'}</span>
+                  </button>
+
                   <button
                     type="button"
                     className="btn btn-outline"
@@ -3718,27 +3840,82 @@ export function AdminPanelModal() {
                     {/* Status & Placement Card */}
                     <div className="admin-form-card" style={{ background: 'var(--paper)', padding: '24px', borderRadius: '12px', border: '1px solid var(--line)' }}>
                       <h4 style={{ fontSize: '1.05rem', color: 'var(--ink)', marginBottom: '16px', fontWeight: 600 }}>
-                        1. Status & Placement Settings
+                        1. Status & Visibility Settings
                       </h4>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {/* Active Toggle */}
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', background: 'var(--surface)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--line)' }}>
-                          <input
-                            type="checkbox"
-                            checked={nativeBannerForm.isActive}
-                            onChange={(e) => setNativeBannerForm(prev => ({ ...prev, isActive: e.target.checked }))}
-                            style={{ width: '18px', height: '18px', accentColor: 'var(--walnut)', cursor: 'pointer' }}
-                          />
-                          <div>
-                            <strong style={{ fontSize: '0.9rem', display: 'block', color: 'var(--ink)' }}>
-                              Enable Native Banner on Storefront
-                            </strong>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)' }}>
-                              When enabled, the 320x50 native banner will be visible to store visitors.
+                        {/* Interactive Toggle Switch Component */}
+                        <div
+                          onClick={() => setNativeBannerForm(prev => ({ ...prev, isActive: !prev.isActive }))}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '16px',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            background: nativeBannerForm.isActive ? '#F0FDF4' : '#FEF2F2',
+                            padding: '16px 20px',
+                            borderRadius: '10px',
+                            border: nativeBannerForm.isActive ? '1.5px solid #BBF7D0' : '1.5px solid #FECACA',
+                            transition: 'all 0.25s ease'
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <strong style={{ fontSize: '0.96rem', color: nativeBannerForm.isActive ? '#166534' : '#991B1B', fontWeight: 700 }}>
+                                {nativeBannerForm.isActive ? 'Ads Section: Active (ON)' : 'Ads Section: Disabled (OFF)'}
+                              </strong>
+                              <span
+                                style={{
+                                  fontSize: '0.68rem',
+                                  padding: '2px 8px',
+                                  borderRadius: '12px',
+                                  fontWeight: 700,
+                                  background: nativeBannerForm.isActive ? '#DCFCE7' : '#FEE2E2',
+                                  color: nativeBannerForm.isActive ? '#166534' : '#991B1B',
+                                  border: `1px solid ${nativeBannerForm.isActive ? '#86EFAC' : '#FCA5A5'}`
+                                }}
+                              >
+                                {nativeBannerForm.isActive ? 'LIVE ON STORE' : 'PAUSED'}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', lineHeight: 1.4, display: 'block' }}>
+                              {nativeBannerForm.isActive
+                                ? 'The native banner & ad scripts are active and visible to visitors on the storefront.'
+                                : 'All ads and banners are completely hidden from the storefront. Click this toggle to turn ON.'}
                             </span>
                           </div>
-                        </label>
+
+                          {/* Animated Switch Pill */}
+                          <div
+                            style={{
+                              width: '52px',
+                              height: '28px',
+                              borderRadius: '14px',
+                              background: nativeBannerForm.isActive ? '#16A34A' : '#D1D5DB',
+                              position: 'relative',
+                              transition: 'background-color 0.25s ease',
+                              flexShrink: 0,
+                              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.15)'
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '50%',
+                                background: '#FFFFFF',
+                                position: 'absolute',
+                                top: '3px',
+                                left: '3px',
+                                transform: nativeBannerForm.isActive ? 'translateX(24px)' : 'translateX(0)',
+                                transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                              }}
+                            />
+                          </div>
+                        </div>
 
                         {/* Placement Selector */}
                         <div>
@@ -3972,17 +4149,66 @@ export function AdminPanelModal() {
                         <h4 style={{ fontSize: '1.05rem', color: 'var(--ink)', fontWeight: 600, margin: 0 }}>
                           Live 320x50 Preview
                         </h4>
-                        <span style={{ fontSize: '0.72rem', background: '#F5F4F0', padding: '3px 8px', borderRadius: '4px', fontWeight: 600, color: 'var(--ink-soft)' }}>
-                          320 × 50 px
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span
+                            style={{
+                              fontSize: '0.68rem',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontWeight: 700,
+                              background: nativeBannerForm.isActive ? '#DCFCE7' : '#FEE2E2',
+                              color: nativeBannerForm.isActive ? '#166534' : '#991B1B',
+                              border: `1px solid ${nativeBannerForm.isActive ? '#86EFAC' : '#FCA5A5'}`
+                            }}
+                          >
+                            {nativeBannerForm.isActive ? '● ACTIVE' : '○ OFF'}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', background: '#F5F4F0', padding: '3px 8px', borderRadius: '4px', fontWeight: 600, color: 'var(--ink-soft)' }}>
+                            320 × 50 px
+                          </span>
+                        </div>
                       </div>
 
-                      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '18px' }}>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--ink-soft)', marginBottom: '16px' }}>
                         This is the exact size and styling visitors will see on mobile & desktop screens:
                       </p>
 
+                      {/* Warning banner when ads are turned off */}
+                      {!nativeBannerForm.isActive && (
+                        <div
+                          style={{
+                            padding: '8px 12px',
+                            background: '#FEF2F2',
+                            border: '1px solid #FECACA',
+                            borderRadius: '6px',
+                            marginBottom: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            color: '#991B1B',
+                            fontSize: '0.76rem',
+                            fontWeight: 600
+                          }}
+                        >
+                          <span>⚠️ Ads Section is currently <strong>TURNED OFF</strong>. Banners and scripts are hidden on the storefront.</span>
+                        </div>
+                      )}
+
                       {/* Mockup Container */}
-                      <div style={{ background: 'var(--bg)', padding: '24px 16px', borderRadius: '8px', border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <div
+                        style={{
+                          background: 'var(--bg)',
+                          padding: '24px 16px',
+                          borderRadius: '8px',
+                          border: '1px dashed var(--line)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: nativeBannerForm.isActive ? 1 : 0.45,
+                          transition: 'opacity 0.25s ease'
+                        }}
+                      >
                         
                         {/* Render Preview Component */}
                         <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', width: '320px' }}>

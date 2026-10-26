@@ -102,12 +102,40 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const res = await api.getUsers();
+      const list = Array.isArray(res) ? res : (res?.users || []);
+      if (Array.isArray(list) && list.length > 0) {
+        const formatted = list.map((u) => ({
+          id: u._id || u.id,
+          _id: u._id || u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          address: u.address || '',
+          role: u.role || 'USER',
+          status: u.status || 'Approved',
+          isVerified: u.isVerified !== undefined ? u.isVerified : true,
+          createdAt: u.createdAt,
+          lastLogin: u.lastLogin
+        }));
+        setUsersDb(formatted);
+        console.info(' [AuthContext] Realtime users refreshed from MongoDB:', formatted.length);
+        return formatted;
+      }
+    } catch (err) {
+      console.warn('⚠️ [AuthContext] fetchUsers error:', err.message);
+    }
+    return [];
+  };
+
   // Sync session with backend API on mount
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('shahlajuk_token');
-      let activeUserRole = null;
-      let activeUser = null;
+      let activeUserRole = currentUser?.role || null;
+      let activeUser = currentUser || null;
 
       if (token) {
         try {
@@ -121,7 +149,9 @@ export function AuthProvider({ children }) {
               address: profile.address || '',
               role: profile.role || 'USER',
               isVerified: true,
-              status: profile.status || 'Approved'
+              status: profile.status || 'Approved',
+              createdAt: profile.createdAt,
+              lastLogin: profile.lastLogin
             };
             setCurrentUser(userObj);
             activeUser = userObj;
@@ -134,24 +164,7 @@ export function AuthProvider({ children }) {
 
       // Query Admin endpoints if authenticated user is ADMIN
       if (activeUserRole === 'ADMIN') {
-        try {
-          const users = await api.getUsers();
-          if (Array.isArray(users) && users.length > 0) {
-            const formatted = users.map(u => ({
-              id: u._id || u.id,
-              name: u.name,
-              email: u.email,
-              phone: u.phone,
-              address: u.address || '',
-              role: u.role || 'USER',
-              status: u.status || 'Approved',
-              isVerified: u.isVerified !== undefined ? u.isVerified : true
-            }));
-            setUsersDb(formatted);
-          }
-        } catch {
-          // Fallback to local storage
-        }
+        await fetchUsers();
       }
       
       fetchLatestOrders(activeUser);
@@ -226,6 +239,9 @@ export function AuthProvider({ children }) {
         setCurrentUser(userObj);
         setIsAuthModalOpen(false);
         await fetchLatestOrders(userObj);
+        if (userObj.role === 'ADMIN') {
+          await fetchUsers();
+        }
         return { success: true, message: `Welcome back, ${res.user.name}!` };
       }
       return { success: false, message: res?.error || 'Invalid credentials' };
@@ -269,6 +285,7 @@ export function AuthProvider({ children }) {
   const updateUserStatus = async (userId, newStatus) => {
     try {
       await api.updateUserStatus(userId, newStatus);
+      await fetchUsers();
     } catch {
       // Fallback to local state if server unreachable
     }
@@ -441,6 +458,7 @@ export function AuthProvider({ children }) {
       value={{
         currentUser,
         usersDb,
+        fetchUsers,
         login,
         register,
         updateUserProfile,
