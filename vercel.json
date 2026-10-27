@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap.xml"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/robots.txt"
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "query",
+          "key": "product"
+        },
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|facebookcatalog|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Pinterest|Slackbot|Discordbot|Applebot).*"
+        }
+      ],
+      "destination": "/api/og"
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "query",
+          "key": "id"
+        },
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|facebookcatalog|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Pinterest|Slackbot|Discordbot|Applebot).*"
+        }
+      ],
+      "destination": "/api/og"
+    },
+    {
+      "source": "/product/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|facebookcatalog|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Pinterest|Slackbot|Discordbot|Applebot).*"
+        }
+      ],
+      "destination": "/api/og?product=:id"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
