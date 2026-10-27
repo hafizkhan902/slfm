@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { ProductIcon } from './ProductIcon';
 import { ProductCard } from './ProductCard';
 import { api } from '../services/api';
+import { SEO } from './SEO';
 
 export function ProductDetailPage({ product, onBack, onSelectProduct }) {
   const { addToCart, setIsCartOpen, showToast } = useCart();
@@ -109,11 +110,20 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
 
   return (
     <div className="product-detail-page">
+      <SEO
+        title={`${product.name} — ৳${product.price ? product.price.toLocaleString() : ''}`}
+        description={product.description || `Buy ${product.name} at ShahLajuk Furniture Mart. Premium handcrafted timber furniture.`}
+        image={displayImg}
+        url={getShareUrl()}
+        type="product"
+        price={product.price}
+        category={product.categoryName || product.roomName || product.category}
+      />
       <div className="wrap" style={{ paddingTop: '32px', paddingBottom: '64px' }}>
         
         {/* Breadcrumb & Back Action */}
         <div className="breadcrumb-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div className="breadcrumb-nav-group" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <button type="button" className="btn-back" onClick={onBack}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -121,7 +131,7 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
               </svg>
               <span>Return to Catalogue</span>
             </button>
-            <div className="breadcrumbs">
+            <div className="breadcrumbs desktop-only">
               <span onClick={onBack} className="crumb-link">Home</span>
               <span className="crumb-sep">/</span>
               <span onClick={onBack} className="crumb-link">{product.roomName}</span>
@@ -132,7 +142,7 @@ export function ProductDetailPage({ product, onBack, onSelectProduct }) {
 
           <button
             type="button"
-            className="btn-share-pill"
+            className="btn-share-pill desktop-only"
             onClick={() => copyToClipboard('copy_link')}
             title="Copy shareable link for this product"
           >

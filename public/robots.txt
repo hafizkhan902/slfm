@@ -1,0 +1,8 @@
+# robots.txt for ShahLajuk Furniture Mart (https://slfm.store)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/admin/
+
+# Google Search Console Sitemap
+Sitemap: https://slfm.store/sitemap.xml

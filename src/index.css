@@ -7391,10 +7391,15 @@ footer {
     margin: 0 auto;
   }
   .breadcrumb-bar {
-    flex-direction: column;
-    align-items: flex-start;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
     gap: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+  }
+  .breadcrumb-bar .breadcrumbs,
+  .breadcrumb-bar .btn-share-pill {
+    display: none !important;
   }
   .crumb-current {
     max-width: 200px;
@@ -8564,6 +8569,13 @@ footer {
   background: #F4EFEA;
   border-color: var(--walnut, #543D2B);
   transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .btn-share-pill,
+  .product-detail-page .breadcrumbs {
+    display: none !important;
+  }
 }
 
 .btn-share-action {

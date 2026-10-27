@@ -3,6 +3,7 @@ import { useProducts } from '../context/ProductContext';
 import { useCart } from '../context/CartContext';
 import { ProductCard } from './ProductCard';
 import { ProductSkeletonGrid } from './ProductSkeleton';
+import { SEO } from './SEO';
 
 /**
  * Modern Minimalist Catalog & Shop Layout (Japandi / Architectural Gallery Aesthetic)
@@ -103,6 +104,20 @@ export function Shop({
 
   return (
     <main className="shop-catalog-view" id="shop-top">
+      <SEO
+        title={
+          activeCategoryObj && activeCategoryObj.id !== 'all'
+            ? `${activeCategoryObj.name} Collection`
+            : (activeRoomObj && activeRoomObj.id !== 'all' ? `${activeRoomObj.name} Collection` : 'Furniture Collection & Catalogue')
+        }
+        description={
+          activeRoomObj && activeRoomObj.desc
+            ? activeRoomObj.desc
+            : 'Browse our architectural collection of beds, wardrobes, dining tables, dressing tables, sofas, and office desks.'
+        }
+        image="/logos.png"
+        type="website"
+      />
       <div className="wrap">
         {/* Editorial Catalog Header */}
         <div className="catalog-header-bar">

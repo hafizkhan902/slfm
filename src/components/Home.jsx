@@ -5,6 +5,7 @@ import { ProductCard } from './ProductCard';
 import { ProductSkeletonGrid } from './ProductSkeleton';
 import { NativeBanner } from './NativeBanner';
 import { api } from '../services/api';
+import { SEO } from './SEO';
 
 const DEFAULT_THEME_SECTION = {
   eyebrow: 'CURATED ARCHITECTURE & THEMES',
@@ -209,6 +210,12 @@ export function Home({ onCatalogClick, onSelectProduct, onSelectRoom, onSelectCa
 
   return (
     <div className="home-layout-container">
+      <SEO
+        title="ShahLajuk Furniture Mart — Artisanal Timber & Modern Interior Design"
+        description="Discover premium handcrafted solid wood & board furniture in Bangladesh. Living room, bedroom, dining, and custom editorial furniture."
+        image="/logos.png"
+        type="website"
+      />
       {/* 1. BOLD, FULL-BLEED EDITORIAL HERO */}
       <section className="editorial-hero" id="top">
         <div className="hero-atmosphere-backdrop" aria-hidden="true"></div>

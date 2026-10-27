@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <!-- Homepage -->
+  <!-- <url>
+    <loc>https://slfm.store/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://slfm.store/logos.png</image:loc>
+      <image:title>ShahLajuk Furniture Mart — Premium Board &amp; Solid Wood Furniture</image:title>
+      <image:caption>Handcrafted, modern and minimalist furniture for your home and office in Bangladesh.</image:caption>
+    </image:image>
+  </url>
+
+  
+  <url>
+    <loc>https://slfm.store/?view=catalog</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+
+  <url>
+    <loc>https://slfm.store/?room=living-room</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=bedroom</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=dining-room</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=reading-room</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=decoration</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=kids-room</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+ 
+  <url>
+    <loc>https://slfm.store/?category=table</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=chair</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=wardrobe</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=dressing-table</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=bookshelf</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=bed</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=sofa</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=wall-shelf</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset> -->
+
+
+<url>
+    <loc>https://slfm.store/</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://slfm.store/logos.png</image:loc>
+      <image:title>ShahLajuk Furniture Mart — Premium Board &amp; Solid Wood Furniture</image:title>
+      <image:caption>Handcrafted modern and minimalist furniture in Bangladesh. High-grade Melamine board and seasoned wood furniture.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Main Catalogue -->
+  <url>
+    <loc>https://slfm.store/?view=catalog</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Room Collections -->
+  <url>
+    <loc>https://slfm.store/?room=living-room</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=bedroom</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=dining-room</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=reading-room</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=decoration</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?room=kids-room</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Categories -->
+  <url>
+    <loc>https://slfm.store/?category=table</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=chair</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=wardrobe</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=dressing-table</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=bookshelf</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=bed</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=sofa</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://slfm.store/?category=wall-shelf</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Live Products (from slfm.store backend) -->
+  <url>
+    <loc>https://slfm.store/?product=dressing-table-4940</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1793061234/shahlajuk_products/sbuk41lgorhq9vfqaxvv.jpg</image:loc>
+      <image:title>Dressing Table</image:title>
+      <image:caption>Elegant Melamine Board Dressing Table with stylish reddish-brown floral finish, large mirror, and vanity organizer.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=king-size-bed-9262</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1793060386/shahlajuk_products/i4kh2p3gy7plberrxlgd.jpg</image:loc>
+      <image:title>King size bed</image:title>
+      <image:caption>Stylish Melamine Board Bed with modern wood-grain finish, sturdy structural frame, and lifetime warranty.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=reading-table-1650</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1793059809/shahlajuk_products/s1hyknxnvsjclkolpr57.jpg</image:loc>
+      <image:title>Reading Table</image:title>
+      <image:caption>Melamine Board Collapsible Reading Table designed for modern compact bedrooms and study nooks.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=modern-elegance-wardrobe-0852</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1792177535/shahlajuk_products/tstumspcbwgedfa6a5bt.jpg</image:loc>
+      <image:title>Two part Almirah</image:title>
+      <image:caption>Modern Elegance Wardrobe – Style Meets Smart Storage with dual partitions and premium soft-close hinges.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=micro-cabinet-8551</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1792176988/shahlajuk_products/ufjfdfozmv9gtf78diuy.jpg</image:loc>
+      <image:title>Book Shelf</image:title>
+      <image:caption>High capacity multi-tier bookshelf for reading rooms and home libraries.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=missef-9153</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1792176208/shahlajuk_products/z70ozbclif8ynsphgnjr.jpg</image:loc>
+      <image:title>Mistsef [Melamine Board]</image:title>
+      <image:caption>Modern Teak-Finish Kitchen Pantry Cabinet and dining hutch with ample storage shelves.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=corne-rack-decorative-2854</loc>
+    <lastmod>2026-10-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1792176055/shahlajuk_products/qd2du9k1zsawttbinvvm.jpg</image:loc>
+      <image:title>Corne Rack Decorative</image:title>
+      <image:caption>Modern Wavy 5-Tier Corner Bookshelf maximizing underutilized corner spaces in living rooms and bedrooms.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=elegant-wooden-dressing-table-with-storage-mirror-2857</loc>
+    <lastmod>2026-10-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1790956026/shahlajuk_products/yc0gj9mf7ewyxbgqsa48.jpg</image:loc>
+      <image:title>Elegant Wooden Dressing Table with Storage &amp; Mirror</image:title>
+      <image:caption>Elevate your daily routine with our Elegant Wooden Dressing Table combining vanity mirror, concealed storage, and drawer units.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=tower-almirah-9642</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1790955704/shahlajuk_products/m56snkxyi4ijpirq0hvu.jpg</image:loc>
+      <image:title>Tower Almirah</image:title>
+      <image:caption>Modern Single-Door Wooden Tower Almirah with vertical space-saving footprint and secure lock.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=bedside-table-c1-1074</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1790954950/shahlajuk_products/dry8ko6nfzp58h33oodd.jpg</image:loc>
+      <image:title>Bedside Table -C1</image:title>
+      <image:caption>Modern 3-Drawer Wooden Bedside Table with smooth sliding rails and lockable upper drawer.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=floral-vine-wardrobe-dressing-0127</loc>
+    <lastmod>2026-10-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1790953066/shahlajuk_products/v6upskgpr7imxcuvow3f.jpg</image:loc>
+      <image:title>Floral Vine Wardrobe Dressing</image:title>
+      <image:caption>Premium 3.5ft x 6ft Floral Almirah &amp; Dressing Wardrobe with arched full-height mirror and metallic gold botanical print.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=wall-shelf-5595</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1790594267/shahlajuk_products/xgue7dpwdcd6df2jf4vq.png</image:loc>
+      <image:title>Wall Shelf</image:title>
+      <image:caption>Heavy-Duty Melamine Floating Wall Shelf with invisible mounting profile and stain-resistant coating.</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://slfm.store/?product=wardrobe-9946</loc>
+    <lastmod>2026-09-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+    <image:image>
+      <image:loc>https://res.cloudinary.com/rsn4xckc/image/upload/v1790587607/shahlajuk_products/u0mtmgzvfu8gzcedw7cm.jpg</image:loc>
+      <image:title>Wardrobe</image:title>
+      <image:caption>Spacious two-door Melamine board wardrobe with hanging rod and interior compartments.</image:caption>
+    </image:image>
+  </url>
+</urlset>
